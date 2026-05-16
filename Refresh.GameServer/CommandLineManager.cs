@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using CommandLine;
 using Refresh.Database;
+using Refresh.Database.Models.Assets;
 using Refresh.Database.Models.Users;
 using Refresh.Interfaces.APIv3.Documentation;
 
@@ -60,11 +61,33 @@ internal class CommandLineManager
         [Option("reallow-user", HelpText = "Re-allow a user to register. Username option is required if this is set.")]
         public bool ReallowUser { get; set; }
 
-        [Option("disallow-email", HelpText = "Disallow the email from being used by anyone in the future. Email option is required if this is set.")]
-        public bool DisallowEmail { get; set; }
+        [Option("disallow-email", HelpText = "Disallow the email address from being used by anyone in the future. Email option is required if this is set.")]
+        public bool DisallowEmailAddress { get; set; }
         
-        [Option("reallow-email", HelpText = "Re-allow the email to be used by anyone. Email option is required if this is set")]
-        public bool ReallowEmail { get; set; }
+        [Option("reallow-email", HelpText = "Re-allow the email address to be used for account registration. Email option is required if this is set")]
+        public bool ReallowEmailAddress { get; set; }
+
+        [Option("disallow-email-domain", HelpText = "Disallow the email domain from being used by anyone in the future. Email option is required if this is set. If a whole Email address is given, only the substring after the last @ will be used.")]
+        public bool DisallowEmailDomain { get; set; }
+        
+        [Option("reallow-email-domain", HelpText = "Re-allow the email domain to be used by anyone. Email option is required if this is set. If a whole Email address is given, only the substring after the last @ will be used.")]
+        public bool ReallowEmailDomain { get; set; }
+
+        [Option("disallow-asset", HelpText = "Disallow an asset by hash. While this won't delete the asset, it will prevent it from being uploaded in the future, and do other actions, such as instructing the game to censor this asset. "
+                                           + "Asset option is required if this is set, and both the Type and Reason options are optional.")]
+        public bool DisallowAsset { get; set; }
+        
+        [Option("reallow-asset", HelpText = "Re-allow an asset by hash. It may be uploaded and used in various UGC again. Asset option is required if this is set.")]
+        public bool ReallowAsset { get; set; }
+
+        [Option('h', "asset", HelpText = "The hash of the asset to operate on.")]
+        public string? AssetHash { get; set; }
+
+        [Option('t', "type", HelpText = "The type of the asset to use. If this isn't set, we will use the corresponding GameAsset's type from DB instead, if it exists.")]
+        public string? AssetType { get; set; }
+
+        [Option('r', "reason", HelpText = "The (usually optional) reason for a moderation action, such as asset disallowance.")]
+        public string? Reason { get; set; }
         
         [Option("rename-user", HelpText = "Changes a user's username. (old) username or Email option is required if this is set.")]
         public string? RenameUser { get; set; }
@@ -180,7 +203,7 @@ internal class CommandLineManager
         {
             if (options.Username != null)
             {
-                if (!this._server.DisallowUser(options.Username))
+                if (!this._server.DisallowUser(options.Username, options.Reason))
                     Fail("User is already disallowed");
             }
             else Fail("No username was provided");
@@ -194,23 +217,74 @@ internal class CommandLineManager
             }
             else Fail("No username was provided");
         }
-        else if (options.DisallowEmail)
+        else if (options.DisallowEmailAddress)
         {
             if (options.EmailAddress != null)
             {
-                if (!this._server.DisallowEmail(options.EmailAddress))
+                if (!this._server.DisallowEmailAddress(options.EmailAddress, options.Reason))
                     Fail("Email address is already disallowed");
             }
             else Fail("No email address was provided");
         }
-        else if (options.ReallowEmail)
+        else if (options.ReallowEmailAddress)
         {
             if (options.EmailAddress != null)
             {
-                if (!this._server.ReallowEmail(options.EmailAddress))
+                if (!this._server.ReallowEmailAddress(options.EmailAddress))
                     Fail("Email address is already allowed");
             }
             else Fail("No email address was provided");
+        }
+        else if (options.DisallowEmailDomain)
+        {
+            if (options.EmailAddress != null)
+            {
+                if (!this._server.DisallowEmailDomain(options.EmailAddress, options.Reason))
+                    Fail("Email domain is already disallowed");
+            }
+            else Fail("No email domain was provided");
+        }
+        else if (options.ReallowEmailDomain)
+        {
+            if (options.EmailAddress != null)
+            {
+                if (!this._server.ReallowEmailDomain(options.EmailAddress))
+                    Fail("Email domain is already allowed");
+            }
+            else Fail("No email domain was provided");
+        }
+        else if (options.DisallowAsset)
+        {
+            if (options.AssetHash != null)
+            {
+                GameAssetType? type = null;
+                if (options.AssetType != null)
+                {
+                    bool parsed = Enum.TryParse(options.AssetType, true, out GameAssetType assetType);
+                    if (!parsed)
+                    {
+                        Fail($"The asset type '{options.AssetType}' couldn't be parsed. Possible values: "
+                            + string.Join(", ", Enum.GetNames(typeof(GameAssetType))));
+                        
+                        return;
+                    }
+
+                    type = assetType;
+                }
+
+                if (!this._server.DisallowAsset(options.AssetHash, type, options.Reason))
+                    Fail("Asset is already disallowed");
+            }
+            else Fail("No asset hash was provided");
+        }
+        else if (options.ReallowAsset)
+        {
+            if (options.AssetHash != null)
+            {
+                if (!this._server.ReallowAsset(options.AssetHash))
+                    Fail("Asset is already allowed");
+            }
+            else Fail("No asset hash was provided");
         }
         else if (options.RenameUser != null)
         {

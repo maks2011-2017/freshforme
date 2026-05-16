@@ -30,7 +30,7 @@ public class ResourceEndpoints : EndpointGroup
     [GameEndpoint("upload/{hash}", HttpMethods.Post)]
     [RequireEmailVerified]
     [SuppressMessage("ReSharper", "ConvertIfStatementToReturnStatement")]
-    [RateLimitSettings(450, 180, 300, "game-asset-upload")]
+    [RateLimitSettings(300, 200, 240, "game-asset-upload")]
     public Response UploadAsset(RequestContext context, string hash, string type, byte[] body, IDataStore dataStore,
         GameDatabaseContext database, GameUser user, AssetImporter importer, GameServerConfig config, IDateTimeProvider timeProvider, Token token,
         DataContext dataContext)
@@ -48,9 +48,11 @@ public class ResourceEndpoints : EndpointGroup
         if (dataStore.ExistsInStore(assetPath))
             return Conflict;
         
-        if (body.Length + user.FilesizeQuotaUsage > config.UserFilesizeQuota)
+        RolePermissions rolePerms = user.GetRolePermissionsForUser(config);
+        
+        if (body.Length + user.FilesizeQuotaUsage > rolePerms.UserFilesizeQuota)
         {
-            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has hit the filesize quota ({1} bytes), rejecting.", user.Username, config.UserFilesizeQuota);
+            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has hit the filesize quota ({1} bytes), rejecting.", user.Username, rolePerms.UserFilesizeQuota);
             return RequestEntityTooLarge;
         }
         
@@ -59,6 +61,12 @@ public class ResourceEndpoints : EndpointGroup
             context.Logger.LogWarning(BunkumCategory.UserContent, "{0} is above 2MB ({1} bytes), rejecting.", hash, body.Length);
             return RequestEntityTooLarge;
         }
+
+        if (database.GetDisallowedAssetInfo(hash) != null)
+        {
+            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has tried to upload a disallowed asset, rejecting.", user);
+            return Unauthorized;
+        }
         
         GameAsset? gameAsset = importer.ReadAndVerifyAsset(hash, body, token.TokenPlatform, database);
         if (gameAsset == null)
@@ -66,9 +74,7 @@ public class ResourceEndpoints : EndpointGroup
 
         gameAsset.UploadDate = DateTimeOffset.FromUnixTimeSeconds(Math.Clamp(gameAsset.UploadDate.ToUnixTimeSeconds(), timeProvider.EarliestDate, timeProvider.TimestampSeconds));
 
-        AssetFlags blockedAssetFlags = config.BlockedAssetFlags.ToAssetFlags();
-        if (user.Role >= GameUserRole.Trusted)
-            blockedAssetFlags = config.BlockedAssetFlagsForTrustedUsers.ToAssetFlags();
+        AssetFlags blockedAssetFlags = rolePerms.BlockedAssetFlags.ToAssetFlags();
        
         // Don't block any assets uploaded from PSP, else block any unwanted assets,
         // For example, if the "blocked asset flags" has the "Media" bit set, and so does the asset,
@@ -106,7 +112,7 @@ public class ResourceEndpoints : EndpointGroup
 
     [GameEndpoint("r/{hash}")]
     [MinimumRole(GameUserRole.Restricted)]
-    [RateLimitSettings(450, 250, 300, "game-asset-download")]
+    [RateLimitSettings(300, 340, 240, "game-asset-download")]
     public Response GetResource(RequestContext context, GameUser user, Token token, string hash, DataContext dataContext, ChallengeGhostRateLimitService ghostService)
     {
         if (!CommonPatterns.Sha1Regex().IsMatch(hash)) return BadRequest;

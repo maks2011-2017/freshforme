@@ -161,7 +161,6 @@ public class ResourceApiEndpoints : EndpointGroup
     [DocError(typeof(ApiValidationError), ApiValidationError.BodyTooLongErrorWhen)]
     [DocError(typeof(ApiValidationError), ApiValidationError.CannotReadAssetErrorWhen)]
     [DocError(typeof(ApiValidationError), ApiValidationError.BodyMustBeImageErrorWhen)]
-    [DocError(typeof(ApiAuthenticationError), ApiAuthenticationError.NoPermissionsForCreationWhen)]
     [RateLimitSettings(420, 10, 300, "image-upload-api")]
     public ApiResponse<ApiGameAssetResponse> UploadImageAsset(RequestContext context, GameDatabaseContext database,
         IDataStore dataStore, AssetImporter importer, GameServerConfig config,
@@ -176,7 +175,7 @@ public class ResourceApiEndpoints : EndpointGroup
         // If we're blocking asset uploads, throw unless the user is an admin.
         // We also have the ability to block asset uploads for trusted users (when they would normally bypass this)
         if (user.IsWriteBlocked(config)) 
-            return ApiAuthenticationError.NoPermissionsForCreation;
+            return ApiAuthenticationError.ReadOnlyError;
         
         if (!CommonPatterns.Sha1Regex().IsMatch(hash)) return ApiValidationError.HashInvalidError;
 
@@ -194,10 +193,17 @@ public class ResourceApiEndpoints : EndpointGroup
             return new ApiValidationError($"The asset must be under 2MB. Your file was {body.Length:N0} bytes.");
         }
 
-        if (body.Length + user.FilesizeQuotaUsage > config.UserFilesizeQuota)
+        RolePermissions rolePerms = user.GetRolePermissionsForUser(config);
+        if (body.Length + user.FilesizeQuotaUsage > rolePerms.UserFilesizeQuota)
         {
-            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has hit the filesize quota ({1} bytes), rejecting.", user.Username, config.UserFilesizeQuota);
+            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has hit the filesize quota ({1} bytes), rejecting.", user.Username, rolePerms.UserFilesizeQuota);
             return new ApiValidationError($"You have exceeded your filesize quota.");
+        }
+
+        if (database.GetDisallowedAssetInfo(hash) != null)
+        {
+            context.Logger.LogWarning(BunkumCategory.UserContent, "User {0} has tried to upload a disallowed asset, rejecting.", user);
+            return ApiModerationError.AssetDisallowedError;
         }
 
         GameAsset? gameAsset = importer.ReadAndVerifyAsset(hash, body, TokenPlatform.Website, database);
@@ -214,7 +220,7 @@ public class ResourceApiEndpoints : EndpointGroup
         
         if (aipi != null && aipi.ScanAndHandleAsset(dataContext, gameAsset))
         {
-            return ApiModerationError.Instance;
+            return ApiModerationError.AssetAutoFlaggedError;
         }
         
         database.AddAssetToDatabase(gameAsset);

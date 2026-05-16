@@ -64,7 +64,9 @@ public partial class GameDatabaseContext : DbContext, IDatabaseContext
     internal DbSet<AssetDependencyRelation> AssetDependencyRelations { get; set; }
     internal DbSet<GameReview> GameReviews { get; set; }
     internal DbSet<DisallowedUser> DisallowedUsers { get; set; }
-    internal DbSet<DisallowedEmail> DisallowedEmails { get; set; }
+    internal DbSet<DisallowedEmailAddress> DisallowedEmailAddresses { get; set; }
+    internal DbSet<DisallowedEmailDomain> DisallowedEmailDomains { get; set; }
+    internal DbSet<DisallowedAsset> DisallowedAssets { get; set; }
     internal DbSet<RateReviewRelation> RateReviewRelations { get; set; }
     internal DbSet<TagLevelRelation> TagLevelRelations { get; set; }
     internal DbSet<GamePlaylist> GamePlaylists { get; set; }
@@ -84,6 +86,7 @@ public partial class GameDatabaseContext : DbContext, IDatabaseContext
     internal DbSet<PersistentJobState> JobStates { get; set; }
     internal DbSet<GameLevelRevision> GameLevelRevisions { get; set; }
     internal DbSet<ModerationAction> ModerationActions { get; set; }
+    internal DbSet<EntityUploadRateLimit> EntityUploadRateLimits { get; set; }
     
 #pragma warning disable CS8618 // Non-nullable variable must contain a non-null value when exiting constructor. Consider declaring it as nullable.
     internal GameDatabaseContext(Logger logger, IDateTimeProvider time, IDatabaseConfig dbConfig)

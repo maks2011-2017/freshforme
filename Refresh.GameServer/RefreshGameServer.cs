@@ -32,6 +32,7 @@ using Refresh.Interfaces.Internal;
 using Refresh.Interfaces.Workers;
 using Refresh.Interfaces.Workers.Repeating;
 using Refresh.Workers;
+using Refresh.Database.Models.Assets;
 
 namespace Refresh.GameServer;
 
@@ -93,7 +94,7 @@ public class RefreshGameServer : RefreshServer
 
             this.WorkerManager?.Stop();
             
-            authProvider ??= new GameAuthenticationProvider(this._configStore.GameServer);
+            authProvider ??= new GameAuthenticationProvider(this._configStore.GameServer, this.Logger);
 
             this.InjectBaseServices(provider, authProvider, this._dataStore);
         });
@@ -107,7 +108,7 @@ public class RefreshGameServer : RefreshServer
     private void InjectBaseServices(GameDatabaseProvider databaseProvider, IAuthenticationProvider<Token> authProvider, IDataStore dataStore)
     {
         this.Server.UseDatabaseProvider(databaseProvider);
-        this.Server.AddAuthenticationService(authProvider, true);
+        this.Server.AddService(new GameAuthenticationService(this.Server.Logger, authProvider));
         this.Server.AddStorageService(dataStore);
     }
 
@@ -141,7 +142,7 @@ public class RefreshGameServer : RefreshServer
     protected override void SetupServices()
     {
         this.Server.AddService<TimeProviderService>(this.GetTimeProvider());
-        this.Server.AddRateLimitService(new RateLimitSettings(90, 380, 45, "global"));
+        this.Server.AddService<GameRateLimitService>(new RateLimiter(new RateLimitSettings(90, 380, 45, "global")));
         this.Server.AddService<CategoryService>();
         this.Server.AddService(new MatchService(this.Server.Logger, this._configStore.GameServer));
         this.Server.AddService<ImportService>();
@@ -271,11 +272,12 @@ public class RefreshGameServer : RefreshServer
         context.SetUserRole(user, role);
     }
     
-    public bool DisallowUser(string username)
+    public bool DisallowUser(string username, string? reason)
     {
         using GameDatabaseContext context = this.GetContext();
         
-        return context.DisallowUser(username);
+        (DisallowedUser disallowed, bool success) = context.DisallowUser(username, reason ?? "");
+        return success;
     }
     
     public bool ReallowUser(string username)
@@ -285,18 +287,50 @@ public class RefreshGameServer : RefreshServer
         return context.ReallowUser(username);
     }
 
-    public bool DisallowEmail(string email)
+    public bool DisallowEmailAddress(string address, string? reason)
     {
         using GameDatabaseContext context = this.GetContext();
-        
-        return context.DisallowEmail(email);
+
+        (DisallowedEmailAddress disallowed, bool success) = context.DisallowEmailAddress(address, reason ?? "");
+        return success;
     }
     
-    public bool ReallowEmail(string email)
+    public bool ReallowEmailAddress(string address)
     {
         using GameDatabaseContext context = this.GetContext();
-        
-        return context.ReallowEmail(email);
+
+        return context.ReallowEmailAddress(address);
+    }
+
+    public bool DisallowEmailDomain(string domain, string? reason)
+    {
+        using GameDatabaseContext context = this.GetContext();
+
+        (DisallowedEmailDomain disallowed, bool success) = context.DisallowEmailDomain(domain, reason ?? "");
+        return success;
+    }
+    
+    public bool ReallowEmailDomain(string domain)
+    {
+        using GameDatabaseContext context = this.GetContext();
+
+        return context.ReallowEmailDomain(domain);
+    }
+
+    public bool DisallowAsset(string hash, GameAssetType? type, string? reason)
+    {
+        using GameDatabaseContext context = this.GetContext();
+        type ??= context.GetAssetFromHash(hash)?.AssetType;
+
+        (DisallowedAsset disallowed, bool success) = context.DisallowAsset(hash, type ?? GameAssetType.Unknown, reason ?? "");
+        return success;
+    }
+    
+    public bool ReallowAsset(string hash)
+    {
+        using GameDatabaseContext context = this.GetContext();
+
+        return context.ReallowAsset(hash);
     }
 
     public void RenameUser(GameUser user, string newUsername, bool force = false)

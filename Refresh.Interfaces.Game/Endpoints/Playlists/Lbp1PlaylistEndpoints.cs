@@ -11,6 +11,7 @@ using Refresh.Core.RateLimits.Levels;
 using Refresh.Core.RateLimits.Playlists;
 using Refresh.Core.Types.Data;
 using Refresh.Database;
+using Refresh.Database.Models;
 using Refresh.Database.Models.Levels;
 using Refresh.Database.Models.Playlists;
 using Refresh.Database.Models.Users;
@@ -59,11 +60,25 @@ public class Lbp1PlaylistEndpoints : EndpointGroup
     {
         GameUser user = dataContext.User!;
         
-        if (user.IsWriteBlocked(config))
-            return Unauthorized;
-        
         GamePlaylist? parent = null;
         GamePlaylist? rootPlaylist = dataContext.Database.GetUserRootPlaylist(user);
+        EntityUploadRateLimitProperties uploadLimit = user.GetRolePermissionsForUser(config).PlaylistUploadRateLimit;
+
+        // Don't block root playlist creation, as the game will otherwise spam requests and softlock
+        if (rootPlaylist != null)
+        {
+            if (user.IsWriteBlocked(config)) return Unauthorized;
+
+            if (uploadLimit.Enabled)
+            {
+                TimeSpan? rateLimitExpiresIn = dataContext.Database.GetRemainingTimeIfUploadRateLimitReached(user, GameDatabaseEntity.Playlist, uploadLimit.UploadQuota);
+                if (rateLimitExpiresIn != null)
+                {
+                    // no need for a notification, because playlists are cheap and i don't really want the game's obscure spam bugs to cause these notifs to be spammed
+                    return Unauthorized;
+                }
+            }
+        }
 
         // If the parent ID is specified, try to parse that out
         if (int.TryParse(context.QueryString["parent_id"], out int parentId))
@@ -95,6 +110,11 @@ public class Lbp1PlaylistEndpoints : EndpointGroup
 
         // Create the playlist, marking it as the root playlist if the user does not have one set already
         GamePlaylist playlist = dataContext.Database.CreatePlaylist(user, body, rootPlaylist == null);
+
+        if (rootPlaylist != null && uploadLimit.Enabled)
+        {
+            dataContext.Database.IncrementUploadRateLimitForEntity(user, GameDatabaseEntity.Playlist, uploadLimit.TimeSpanHours);
+        }
 
         // If there is a parent, add the new playlist to the parent
         if (parent != null) 
@@ -221,11 +241,8 @@ public class Lbp1PlaylistEndpoints : EndpointGroup
 
     [GameEndpoint("deletePlaylist/{id}", HttpMethods.Post)]
     [RequireEmailVerified]
-    public Response DeletePlaylist(RequestContext context, GameServerConfig config, GameDatabaseContext database, GameUser user, int id)
+    public Response DeletePlaylist(RequestContext context, GameDatabaseContext database, GameUser user, int id)
     {
-        if (user.IsWriteBlocked(config))
-            return Unauthorized;
-        
         GamePlaylist? playlist = database.GetPlaylistById(id);
         if (playlist == null)
             return NotFound;
@@ -379,6 +396,9 @@ public class Lbp1PlaylistEndpoints : EndpointGroup
                             PlaylistModificationEndpointLimits.BlockDuration, PlaylistModificationEndpointLimits.RequestBucket)]
     public Response MoveSlotFromPlaylist(RequestContext context, GameServerConfig config, GameDatabaseContext database, GameUser user, int from)     
     {
+        if (user.IsWriteBlocked(config))
+            return Unauthorized;
+
         if (!int.TryParse(context.QueryString["to"], out int to))
             return BadRequest;
 

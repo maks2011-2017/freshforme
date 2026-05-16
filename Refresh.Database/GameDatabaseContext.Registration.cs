@@ -115,7 +115,7 @@ public partial class GameDatabaseContext // Registration
     {
         return this.GameUsers.Any(u => u.EmailAddress == emailAddress) ||
                this.QueuedRegistrations.Any(r => r.EmailAddress == emailAddress) ||
-               this.IsEmailDisallowed(emailAddress);
+               this.IsEmailAddressDisallowed(emailAddress);
     }
 
     public void AddRegistrationToQueue(string username, string emailAddress, string passwordBcrypt)
@@ -217,70 +217,129 @@ public partial class GameDatabaseContext // Registration
             this.EmailVerificationCodes.Remove(code);
         });
     }
+
+    public bool IsUserDisallowed(string username)
+        => this.DisallowedUsers.Any(u => u.Username == username);
     
-    public bool DisallowUser(string username)
+    public DisallowedUser? GetDisallowedUserInfo(string username)
+        => this.DisallowedUsers.FirstOrDefault(d => d.Username == username);
+    
+    public DatabaseList<DisallowedUser> GetDisallowedUsers(int skip, int count)
+        => new(this.DisallowedUsers.OrderByDescending(d => d.DisallowedAt), skip, count);
+    
+    public (DisallowedUser, bool) DisallowUser(string username, string reason)
     {
-        if (this.DisallowedUsers.FirstOrDefault(u => u.Username == username) != null) 
-            return false;
+        DisallowedUser? existing = this.GetDisallowedUserInfo(username);
+        if (existing != null) return (existing, false);
         
-        this.Write(() =>
+        DisallowedUser disallowed = new()
         {
-            this.DisallowedUsers.Add(new DisallowedUser
-            {
-                Username = username,
-            });
-        });
+            Username = username,
+            Reason = reason,
+            DisallowedAt = this._time.Now,
+        };
+        this.DisallowedUsers.Add(disallowed);
+        this.SaveChanges();
         
-        return true;
+        return (disallowed, true);
     }
     
     public bool ReallowUser(string username)
     {
-        DisallowedUser? disallowedUser = this.DisallowedUsers.FirstOrDefault(u => u.Username == username);
+        DisallowedUser? disallowedUser = this.GetDisallowedUserInfo(username);
         if (disallowedUser == null) 
             return false;
         
-        this.Write(() =>
-        {
-            this.DisallowedUsers.Remove(disallowedUser);
-        });
+        this.DisallowedUsers.Remove(disallowedUser);
+        this.SaveChanges();
         
         return true;
-    }
-    
-    public bool IsUserDisallowed(string username)
-    {
-        return this.DisallowedUsers.FirstOrDefault(u => u.Username == username) != null;
     }
 
-    public bool DisallowEmail(string email)
+    public bool IsEmailAddressDisallowed(string emailAddress)
+        => this.DisallowedEmailAddresses.Any(u => u.Address == emailAddress);
+
+    public DisallowedEmailAddress? GetDisallowedEmailAddressInfo(string emailAddress)
+        => this.DisallowedEmailAddresses.FirstOrDefault(d => d.Address == emailAddress);
+
+    public DatabaseList<DisallowedEmailAddress> GetDisallowedEmailAddresses(int skip, int count)
+        => new(this.DisallowedEmailAddresses.OrderByDescending(d => d.DisallowedAt), skip, count);
+
+    public (DisallowedEmailAddress, bool) DisallowEmailAddress(string emailAddress, string reason)
     {
-        if (this.IsEmailDisallowed(email)) 
-            return false;
+        DisallowedEmailAddress? existing = this.GetDisallowedEmailAddressInfo(emailAddress);
+        if (existing != null) return (existing, false);
         
-        this.DisallowedEmails.Add(new()
+        DisallowedEmailAddress disallowed = new()
         {
-            Email = email,
-        });
+            Address = emailAddress,
+            Reason = reason,
+            DisallowedAt = this._time.Now,
+        };
+        this.DisallowedEmailAddresses.Add(disallowed);
         this.SaveChanges();
         
-        return true;
+        return (disallowed, true);
     }
     
-    public bool ReallowEmail(string email)
+    public bool ReallowEmailAddress(string emailAddress)
     {
-        DisallowedEmail? disallowedEmail = this.DisallowedEmails.FirstOrDefault(u => u.Email == email);
-        if (disallowedEmail == null) 
+        DisallowedEmailAddress? disallowed = this.GetDisallowedEmailAddressInfo(emailAddress);
+        if (disallowed == null) 
             return false;
         
-        this.DisallowedEmails.Remove(disallowedEmail);
+        this.DisallowedEmailAddresses.Remove(disallowed);
         this.SaveChanges();
         
         return true;
     }
+
+    private string GetEmailDomainFromAddress(string emailAddress)
+        => emailAddress.Split('@').Last();
     
-    public bool IsEmailDisallowed(string email)
+    public bool IsEmailDomainDisallowed(string emailAddress)
     {
-        return this.DisallowedEmails.Any(u => u.Email == email);
+        string emailDomain = this.GetEmailDomainFromAddress(emailAddress);
+        return this.DisallowedEmailDomains.Any(u => u.Domain == emailDomain);
+    }
+
+    public DisallowedEmailDomain? GetDisallowedEmailDomainInfo(string emailAddress)
+    {
+        string emailDomain = this.GetEmailDomainFromAddress(emailAddress);
+        return this.DisallowedEmailDomains.FirstOrDefault(d => d.Domain == emailDomain);
+    }
+
+    public DatabaseList<DisallowedEmailDomain> GetDisallowedEmailDomains(int skip, int count)
+        => new(this.DisallowedEmailDomains.OrderByDescending(d => d.DisallowedAt), skip, count);
+
+    public (DisallowedEmailDomain, bool) DisallowEmailDomain(string emailAddress, string reason)
+    {
+        string emailDomain = this.GetEmailDomainFromAddress(emailAddress);
+        DisallowedEmailDomain? existing = this.GetDisallowedEmailDomainInfo(emailDomain);
+        if (existing != null) return (existing, false);
+        
+        DisallowedEmailDomain disallowed = new()
+        {
+            Domain = emailDomain,
+            Reason = reason,
+            DisallowedAt = this._time.Now,
+        };
+        this.DisallowedEmailDomains.Add(disallowed);
+        this.SaveChanges();
+        
+        return (disallowed, true);
+    }
+
+    public bool ReallowEmailDomain(string emailAddress)
+    {
+        string emailDomain = this.GetEmailDomainFromAddress(emailAddress);
+        DisallowedEmailDomain? disallowedDomain = this.GetDisallowedEmailDomainInfo(emailDomain);
+        if (disallowedDomain == null) 
+            return false;
+        
+        this.DisallowedEmailDomains.Remove(disallowedDomain);
+        this.SaveChanges();
+        
+        return true;
     }
 }

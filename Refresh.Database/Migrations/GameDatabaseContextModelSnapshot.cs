@@ -23,6 +23,26 @@ namespace Refresh.Database.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("DisallowedAsset", b =>
+                {
+                    b.Property<string>("AssetHash")
+                        .HasColumnType("text");
+
+                    b.Property<int>("AssetType")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("DisallowedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("AssetHash");
+
+                    b.ToTable("DisallowedAssets");
+                });
+
             modelBuilder.Entity("Refresh.Database.Models.Activity.Event", b =>
                 {
                     b.Property<string>("EventId")
@@ -1510,19 +1530,47 @@ namespace Refresh.Database.Migrations
                     b.ToTable("RequestStatistics");
                 });
 
-            modelBuilder.Entity("Refresh.Database.Models.Users.DisallowedEmail", b =>
+            modelBuilder.Entity("Refresh.Database.Models.Users.DisallowedEmailAddress", b =>
                 {
-                    b.Property<string>("Email")
+                    b.Property<string>("Address")
                         .HasColumnType("text");
 
-                    b.HasKey("Email");
+                    b.Property<DateTimeOffset>("DisallowedAt")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.ToTable("DisallowedEmails");
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.HasKey("Address");
+
+                    b.ToTable("DisallowedEmailAddresses");
+                });
+
+            modelBuilder.Entity("Refresh.Database.Models.Users.DisallowedEmailDomain", b =>
+                {
+                    b.Property<string>("Domain")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("DisallowedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.HasKey("Domain");
+
+                    b.ToTable("DisallowedEmailDomains");
                 });
 
             modelBuilder.Entity("Refresh.Database.Models.Users.DisallowedUser", b =>
                 {
                     b.Property<string>("Username")
+                        .HasColumnType("text");
+
+                    b.Property<DateTimeOffset>("DisallowedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
                         .HasColumnType("text");
 
                     b.HasKey("Username");
@@ -1544,6 +1592,25 @@ namespace Refresh.Database.Migrations
                     b.HasKey("UserId", "Code");
 
                     b.ToTable("EmailVerificationCodes");
+                });
+
+            modelBuilder.Entity("Refresh.Database.Models.Users.EntityUploadRateLimit", b =>
+                {
+                    b.Property<string>("UserId")
+                        .HasColumnType("text");
+
+                    b.Property<byte>("Entity")
+                        .HasColumnType("smallint");
+
+                    b.Property<int>("UploadCount")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTimeOffset>("ExpiryDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("UserId", "Entity");
+
+                    b.ToTable("EntityUploadRateLimits");
                 });
 
             modelBuilder.Entity("Refresh.Database.Models.Users.GameIpVerificationRequest", b =>
@@ -1686,12 +1753,6 @@ namespace Refresh.Database.Migrations
 
                     b.Property<string>("StatisticsUserId")
                         .HasColumnType("text");
-
-                    b.Property<DateTimeOffset?>("TimedLevelUploadExpiryDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("TimedLevelUploads")
-                        .HasColumnType("integer");
 
                     b.Property<bool>("UnescapeXmlSequences")
                         .HasColumnType("boolean");
@@ -2463,6 +2524,17 @@ namespace Refresh.Database.Migrations
                 });
 
             modelBuilder.Entity("Refresh.Database.Models.Users.EmailVerificationCode", b =>
+                {
+                    b.HasOne("Refresh.Database.Models.Users.GameUser", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("Refresh.Database.Models.Users.EntityUploadRateLimit", b =>
                 {
                     b.HasOne("Refresh.Database.Models.Users.GameUser", "User")
                         .WithMany()

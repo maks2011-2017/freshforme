@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using AttribDoc.Attributes;
 using Bunkum.Core;
@@ -105,6 +106,21 @@ public class AuthenticationApiEndpoints : EndpointGroup
 
         Token token = database.GenerateTokenForUser(user, TokenType.Api, TokenGame.Website, TokenPlatform.Website, ipAddress);
         Token refreshToken = database.GenerateTokenForUser(user, TokenType.ApiRefresh, TokenGame.Website, TokenPlatform.Website, ipAddress, GameDatabaseContext.RefreshTokenExpirySeconds);
+
+        if (user.UserId != token.UserId)
+        {
+#if DEBUG
+            if(Debugger.IsAttached) Debugger.Break();
+#endif
+            throw new InvalidDataException($"API login - API token owner ({token.User}) does not match user received from DB ({user})!");
+        }
+        if (user.UserId != refreshToken.UserId)
+        {
+#if DEBUG
+            if(Debugger.IsAttached) Debugger.Break();
+#endif
+            throw new InvalidDataException($"API login - Refresh token owner ({refreshToken.User}) does not match user received from DB ({user})!");
+        }
         
         context.Logger.LogInfo(BunkumCategory.Authentication, $"{user} successfully logged in through the API");
 
@@ -131,8 +147,15 @@ public class AuthenticationApiEndpoints : EndpointGroup
         GameUser user = refreshToken.User;
 
         Token token = database.GenerateTokenForUser(user, TokenType.Api, TokenGame.Website, TokenPlatform.Website, context.RemoteIp());
+        if (token.UserId != refreshToken.UserId)
+        {
+#if DEBUG
+            if(Debugger.IsAttached) Debugger.Break();
+#endif
+            throw new InvalidDataException($"RefreshToken - Owner of new token ({token.User}) does not match owner of refresh token ({refreshToken.User})!");
+        }
+
         database.ResetApiRefreshTokenExpiry(refreshToken);
-        
         context.Logger.LogInfo(BunkumCategory.Authentication, $"{user} successfully refreshed their token through the API");
 
         return new ApiAuthenticationResponse
@@ -324,7 +347,7 @@ public class AuthenticationApiEndpoints : EndpointGroup
         if (!smtpService.CheckEmailDomainValidity(body.EmailAddress))
             return ApiValidationError.EmailDoesNotActuallyExistError;
         
-        if (database.IsUserDisallowed(body.Username) || database.IsEmailDisallowed(body.EmailAddress))
+        if (database.IsUserDisallowed(body.Username) || database.IsEmailAddressDisallowed(body.EmailAddress) || database.IsEmailDomainDisallowed(body.EmailAddress))
             return new ApiAuthenticationError("You aren't allowed to play on this instance.");
         
         if (!database.IsUsernameValid(body.Username))
@@ -402,9 +425,15 @@ public class AuthenticationApiEndpoints : EndpointGroup
     }
 
     [ApiV3Endpoint("users/me", HttpMethods.Delete), MinimumRole(GameUserRole.Restricted)]
-    [DocSummary("Deletes your own account. This action is non-reversible.")]
-    public ApiOkResponse DeleteMyAccount(RequestContext context, GameUser user, GameDatabaseContext database)
+    [DocSummary("Deletes your own account. This action is non-reversible. This endpoint now requires you to include your own password while being authenticated.")]
+    public ApiOkResponse DeleteMyAccount(RequestContext context, GameUser user, ApiOwnUserDeletionRequest body, GameDatabaseContext database)
     {
+        if (string.IsNullOrWhiteSpace(body.PasswordSha512))
+            return new ApiValidationError("You must enter your password to delete your account.");
+
+        if (!BC.Verify(body.PasswordSha512, user.PasswordBcrypt))
+            return new ApiValidationError("The password was incorrect.");
+
         database.DeleteUser(user);
         return new ApiOkResponse();
     }
