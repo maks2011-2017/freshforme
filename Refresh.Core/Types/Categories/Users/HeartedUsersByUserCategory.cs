@@ -10,7 +10,7 @@ public class HeartedUsersByUserCategory : GameCategory
     public HeartedUsersByUserCategory() : base("hearted", [], true)
     {
         this.Name = "Мои любимчики";
-        this.Description = "Пользователи, которых вы полюбили.";
+        this.Description = "Пользователи, которых вы лайкнули.";
         this.FontAwesomeIcon = "heart";
         this.IconHash = "g820612";
         this.PrimaryResultType = ResultType.User;
