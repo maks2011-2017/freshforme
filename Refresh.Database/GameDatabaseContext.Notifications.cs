@@ -33,7 +33,7 @@ public partial class GameDatabaseContext // Notifications
     public void AddPublishFailNotification(string reason, string levelTitle, GameUser user)
     {
         string title = string.IsNullOrWhiteSpace(levelTitle) ? "Unnamed Level" : levelTitle;
-        this.AddErrorNotification("Publish failed", $"The level '{title}' failed to publish. {reason}", user);
+        this.AddErrorNotification("Выложить не удалсоь", $"Уровенть '{title}' не удалось выложить. {reason}", user);
     }
 
     private const string LoginFail = "Log-in failure";
@@ -86,7 +86,7 @@ public partial class GameDatabaseContext // Notifications
     public IEnumerable<GameAnnouncement> GetAnnouncements() => this.GameAnnouncements.OrderByDescending(a => a.CreatedAt);
     
     public GameAnnouncement? GetAnnouncementById(ObjectId id) => this.GameAnnouncements.FirstOrDefault(a => a.AnnouncementId == id);
-    
+
     public GameAnnouncement AddAnnouncement(string title, string text)
     {
         GameAnnouncement announcement = new()

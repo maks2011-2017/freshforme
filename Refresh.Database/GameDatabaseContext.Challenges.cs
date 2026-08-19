@@ -115,7 +115,7 @@ public partial class GameDatabaseContext // Challenges
         )
         {
             this.AddNotification("Challenge Score overtaken",
-                $"Your #1 score on '{challenge.Name}' in '{challenge.Level.Title}' has been overtaken by {user.Username}!",
+                $"Твой #1 рекорд '{challenge.Name}' в '{challenge.Level.Title}' был побит {user.Username}!",
                 prevRankOne.score.Publisher, "medal");
         }
 

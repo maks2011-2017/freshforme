@@ -167,7 +167,7 @@ public partial class GameDatabaseContext // Levels
         // Notify the user about how many of the location updates have failed
         if (failedUpdates > 0)
         {
-            this.AddErrorNotification("Level updates failed", $"Failed to update {failedUpdates} out of {locations.Count()} level locations.", updatingUser);
+            this.AddErrorNotification("Обновление уровня неполучилось", $"Не удалось обновить {failedUpdates} из {locations.Count()} level locations.", updatingUser);
         }
     }
 

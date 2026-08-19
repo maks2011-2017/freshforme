@@ -14,7 +14,13 @@ using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Request;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response;
 
 namespace Refresh.Interfaces.APIv3.Endpoints.Admin;
-
+public class ApiCreateNotificationRequest
+{
+    public string Title { get; set; } = null!;
+    public string Text { get; set; } = null!;
+    public string UserId { get; set; } = null!;
+    public string? Icon { get; set; }
+}
 public class AdminAnnouncementsApiEndpoints : EndpointGroup
 {
     [ApiV3Endpoint("admin/announcements", HttpMethods.Post), MinimumRole(GameUserRole.Admin)]
@@ -39,6 +45,24 @@ public class AdminAnnouncementsApiEndpoints : EndpointGroup
         if (announcement == null) return ApiNotFoundError.Instance;
 
         database.DeleteAnnouncement(announcement);
+        return new ApiOkResponse();
+    }
+
+    [ApiV3Endpoint("admin/notifications", HttpMethods.Post), MinimumRole(GameUserRole.Admin)]
+    [DocError(typeof(ApiNotFoundError), "The user could not be found")]
+    [DocSummary("Sends a player a personalized notification using his UUID")]
+    public ApiOkResponse CreateNotification(RequestContext context,
+        GameDatabaseContext database, ApiCreateNotificationRequest body)
+    {
+        GameUser? user = database.GetUserByUuid(body.UserId);
+        
+        if (user == null) 
+        {
+            return ApiNotFoundError.Instance; 
+        }
+
+        database.AddNotification(body.Title, body.Text, user, body.Icon);
+
         return new ApiOkResponse();
     }
 }

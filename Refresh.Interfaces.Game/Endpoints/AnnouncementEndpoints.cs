@@ -31,7 +31,7 @@ public class AnnouncementEndpoints : EndpointGroup
 
         string s = count != 1 ? "s" : string.Empty;
 
-        output.Append($"Howdy, {user.Username}. You have {count} notification{s}:\n\n");
+        output.Append($"Че как, {user.Username}. У тя есть {count} уведомлений!{s}:\n\n");
         for (int i = 0; i < notifications.Count; i++)
         {
             GameNotification notification = notifications[i];
@@ -39,7 +39,7 @@ public class AnnouncementEndpoints : EndpointGroup
             output.Append($"    {notification.Text}\n\n");
         }
 
-        output.Append($"To view more, or clear these notifications, you can visit the website at {config.WebExternalUrl}!\n");
+        output.Append($"Если надо чекнуть все или очистить то пройди туда братишка  {config.WebExternalUrl}!\n");
         return true;
     }
 
@@ -85,26 +85,24 @@ public class AnnouncementEndpoints : EndpointGroup
         if (user.Role == GameUserRole.Restricted)
         {
             return $"""
-                   Your account is currently in restricted mode.
+                   Твой аккаунт типа это ну как его там крч не можешь ты ниче делать
                    
-                   Reason: {user.BanReason ?? "No reason given."}
+                   Причина: {user.BanReason ?? "Нет причины."}
                    Remaining: ~{(user.BanExpiryDate! - timeProvider.Now).Value.Days} days
                    
-                   You can still play, but you won't be able to publish levels, post comments, or otherwise interact with the community.
-                   For more information, please contact an administrator.
+                   Ты все еще можешь играть но не сможешь никак интерактировать с сообществом. напиши админам
                    """;
         }
 
         if (!user.EmailAddressVerified)
         {
-            return $"Your account doesn't have a verified email address. If this is a new account, there should be a verification code in your inbox.\n\n" +
+            return $"ПОДТВЕРДИ ЕМЕЙЛ!!!\n\n" +
                    
-                   $"You can still play online without a verified email address if you wish, " +
-                   $"but you might miss out on 'share' features like level uploading, and you will not be able to dive in.\n\n" +
+                   $"Если чо, играть еще можешь.. нооо не сможешь ничего выкладывать" +                   
                    
-                   $"If you didn't receive it, try checking your spam folder. You can also opt to resend the code on the website.\n\n" +
+                   $"Проверь спам ящик если что... \n\n" +
                    
-                   $"For more information, sign into the site at {config.WebExternalUrl}.";
+                   $"{config.WebExternalUrl}.";
         }
         
         // ReSharper disable once JoinDeclarationAndInitializer (makes it easier to follow)
