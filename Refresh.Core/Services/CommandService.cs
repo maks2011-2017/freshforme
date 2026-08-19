@@ -59,6 +59,12 @@ public class CommandService : EndpointService
     {
         switch (command.Name)
         {
+            case "si":
+            {
+                database.AddNotification("Debug", "This is a debug notification triggered by a command.", user);
+                database.AddNotification("real", "bro used SI", user);
+                break;
+            }
             case "forcematch":
             {
                 if (command.Arguments.IsEmpty)
