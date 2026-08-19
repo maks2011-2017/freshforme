@@ -156,7 +156,7 @@ public class AnnouncementEndpoints : EndpointGroup
         {
             SerializedNotification serializedNotification = new()
             {
-                Text = $"[{config.InstanceName}] {notification.Title}: {notification.Text}",
+                Text = $"{notification.Title}: {notification.Text}",
             };
                 
             serializer.Serialize(bunkumXmlTextWriter, serializedNotification, namespaces);
