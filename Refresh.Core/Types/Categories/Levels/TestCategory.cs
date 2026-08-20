@@ -1,0 +1,39 @@
+using Bunkum.Core;
+using Refresh.Core.Types.Data;
+using Refresh.Database.Models.Contests;
+using Refresh.Database.Models.Users;
+using Refresh.Database.Query;
+
+namespace Refresh.Core.Types.Categories.Levels;
+
+public class TestCategory : GameCategory
+{
+    public TestCategory() : base("test", [], false)
+    {
+        this.Name = "ТЕСТ200";
+        this.Description = "Уровни с ТЕСТ2000.";
+        this.FontAwesomeIcon = "certificate";
+        this.IconHash = "g820608";
+        this.PrimaryResultType = ResultType.Level;
+    }
+    
+    public override DatabaseResultList? Fetch(RequestContext context, int skip, int count, DataContext dataContext,
+        LevelFilterSettings levelFilterSettings, GameUser? _)
+    {
+        // try to find a contest by the query parameter
+        string? contestId = context.QueryString["contest"];
+        GameContest? contest = dataContext.Database.GetContestById(contestId);
+        
+        // if we can't find one by a query param, try getting an active contest instead
+        contest ??= dataContext.Database.GetNewestActiveContest();
+
+        // if there's no active contest, then try to use the last one that ended
+        contest ??= dataContext.Database.GetLatestCompletedContest();
+        
+        // if not, then fail
+        if (contest == null)
+            return null;
+        
+        return new(dataContext.Database.GetLevelsFromContest(contest, count, skip, dataContext.User, levelFilterSettings));
+    }
+}
