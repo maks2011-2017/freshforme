@@ -515,69 +515,69 @@ public partial class GameDatabaseContext // Levels
         return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
     }
 
-    [Pure]
+    // [Pure]
 
-    public DatabaseList<GameLevel> SearchForMultipleLevels(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string query, string query2, string query3, string query4)
-    {
-        IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
-                .FilterByLevelFilterSettings(user, levelFilterSettings);
+    // public DatabaseList<GameLevel> SearchForMultipleLevels(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string query, string query2, string query3, string query4)
+    // {
+    //     IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
+    //             .FilterByLevelFilterSettings(user, levelFilterSettings);
 
-        // Собираем все входящие запросы в один массив и убираем пустые/null строки
-        string[] queries = new[] { query, query2, query3, query4 }
-            .Where(q => !string.IsNullOrWhiteSpace(q))
-            .Select(q => q.Trim())
-            .ToArray();
+    //     // Собираем все входящие запросы в один массив и убираем пустые/null строки
+    //     string[] queries = new[] { query, query2, query3, query4 }
+    //         .Where(q => !string.IsNullOrWhiteSpace(q))
+    //         .Select(q => q.Trim())
+    //         .ToArray();
 
-        // Если все переданные строки оказались пустыми, возвращаем пустой список с пагинацией
-        if (queries.Length == 0)
-        {
-            return new DatabaseList<GameLevel>(new List<GameLevel>(), skip, count);
-        }
+    //     // Если все переданные строки оказались пустыми, возвращаем пустой список с пагинацией
+    //     if (queries.Length == 0)
+    //     {
+    //         return new DatabaseList<GameLevel>(new List<GameLevel>(), skip, count);
+    //     }
 
-        // Инициализируем базовый запрос для текстового поиска
-        IQueryable<GameLevel> searchExpression = validLevels;
+    //     // Инициализируем базовый запрос для текстового поиска
+    //     IQueryable<GameLevel> searchExpression = validLevels;
 
-        // Динамически строим OR для каждого слова средствами LINQ to Entities.
-        // База данных получит эффективный запрос вида: (Title ILIKE %q1% OR Description ILIKE %q1%) OR (Title ILIKE %q2% ...)
-        List<GameLevel> levels = validLevels.Where(l =>
-            queries.Any(q => EF.Functions.ILike(l.Title, $"%{q}%") || EF.Functions.ILike(l.Description, $"%{q}%"))
-        ).ToList();
+    //     // Динамически строим OR для каждого слова средствами LINQ to Entities.
+    //     // База данных получит эффективный запрос вида: (Title ILIKE %q1% OR Description ILIKE %q1%) OR (Title ILIKE %q2% ...)
+    //     List<GameLevel> levels = validLevels.Where(l =>
+    //         queries.Any(q => EF.Functions.ILike(l.Title, $"%{q}%") || EF.Functions.ILike(l.Description, $"%{q}%"))
+    //     ).ToList();
 
-        // Проходимся по каждому непустому запросу для поиска по ID и автору
-        foreach (string currentQuery in queries)
-        {
-            // 1. Поиск по ID (если строка является числом)
-            if (int.TryParse(currentQuery, out int id))
-            {
-                GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
+    //     // Проходимся по каждому непустому запросу для поиска по ID и автору
+    //     foreach (string currentQuery in queries)
+    //     {
+    //         // 1. Поиск по ID (если строка является числом)
+    //         if (int.TryParse(currentQuery, out int id))
+    //         {
+    //             GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
 
-                if (idLevel != null && !levels.Contains(idLevel))
-                {
-                    levels.Add(idLevel);
-                }
-            }
+    //             if (idLevel != null && !levels.Contains(idLevel))
+    //             {
+    //                 levels.Add(idLevel);
+    //             }
+    //         }
 
-            // 2. Поиск по автору (Publisher)
-            GameUser? publisher = this.GetUserByUsername(currentQuery, false); 
-            if (publisher != null)
-            {
-                // Находим уровни этого автора
-                List<GameLevel> publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
+    //         // 2. Поиск по автору (Publisher)
+    //         GameUser? publisher = this.GetUserByUsername(currentQuery, false); 
+    //         if (publisher != null)
+    //         {
+    //             // Находим уровни этого автора
+    //             List<GameLevel> publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
                 
-                // Добавляем только те, которых еще нет в основном списке (избегаем дубликатов)
-                foreach (GameLevel pubLevel in publisherLevels)
-                {
-                    if (!levels.Contains(pubLevel))
-                    {
-                        levels.Add(pubLevel);
-                    }
-                }
-            }
-        }
+    //             // Добавляем только те, которых еще нет в основном списке (избегаем дубликатов)
+    //             foreach (GameLevel pubLevel in publisherLevels)
+    //             {
+    //                 if (!levels.Contains(pubLevel))
+    //                 {
+    //                     levels.Add(pubLevel);
+    //                 }
+    //             }
+    //         }
+    //     }
 
-        // Сортируем итоговый результат по рейтингу и оборачиваем в DatabaseList
-        return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
-    }
+    //     // Сортируем итоговый результат по рейтингу и оборачиваем в DatabaseList
+    //     return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
+    // }
 
 
     [Pure]

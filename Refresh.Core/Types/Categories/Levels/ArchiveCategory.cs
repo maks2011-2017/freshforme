@@ -20,6 +20,6 @@ public class ArchCategory : GameCategory
     public override DatabaseResultList? Fetch(RequestContext context, int skip, int count, DataContext dataContext,
         LevelFilterSettings levelFilterSettings, GameUser? _)
     {
-        return new(dataContext.Database.SearchForMultipleLevels(count, skip, dataContext.User, levelFilterSettings, "Архив", "Archive", "Reupload", "Перезалив"));
+        return new(dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings, "Архив"));
     }
 }
