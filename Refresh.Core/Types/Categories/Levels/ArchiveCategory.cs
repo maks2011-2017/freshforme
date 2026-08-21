@@ -13,7 +13,7 @@ public class ArchCategory : GameCategory
         this.Name = "Архив";
         this.Description = "Архивные уровни! (тест)";
         this.FontAwesomeIcon = "certificate";
-        this.IconHash = "g96508";
+        this.IconHash = "g281132";
         this.PrimaryResultType = ResultType.Level;
     }
     
