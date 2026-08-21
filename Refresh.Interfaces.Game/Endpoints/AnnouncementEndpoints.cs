@@ -55,13 +55,18 @@ public class AnnouncementEndpoints : EndpointGroup
         
         НОВОСТИ (можно листать):
         """);
+        var russianCulture = new System.Globalization.CultureInfo("ru-RU");
         foreach (GameAnnouncement announcement in announcements)
+        {
+        string formattedDate = announcement.CreatedAt.ToString("d MMMM yyyy", russianCulture);
             output.Append($"""
 
             ----> {announcement.Title} <----
             {announcement.Text}
-
+            
+            Опубликовано: {formattedDate}
             """);
+        }
         
         return announcements.Any();
     }
