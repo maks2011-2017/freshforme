@@ -13,7 +13,7 @@ public class TestCategory : GameCategory
         this.Name = "ТЕСТ200";
         this.Description = "Уровни с ТЕСТ2000.";
         this.FontAwesomeIcon = "certificate";
-        this.IconHash = "g107326";
+        this.IconHash = "g40228";
         this.PrimaryResultType = ResultType.Level;
     }
     
