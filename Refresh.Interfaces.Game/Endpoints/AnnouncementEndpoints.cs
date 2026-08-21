@@ -52,7 +52,7 @@ public class AnnouncementEndpoints : EndpointGroup
             ** {announcement.Title} **
             ======================
             {announcement.Text}
-            -----
+
 
             """);
         
