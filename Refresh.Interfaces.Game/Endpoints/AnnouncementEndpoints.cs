@@ -43,15 +43,23 @@ public class AnnouncementEndpoints : EndpointGroup
         return true;
     }
 
-    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database)
+    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database, GameUser? user)
     {
         IEnumerable<GameAnnouncement> announcements = database.GetAnnouncements().ToList();
+        int playersonline = database.GetActiveUserCount();
+        output.Append($"""
+
+        Привет, {user?.Username}! Сейчас онлайн {playersonline} игроков.
+        Хорошей игры!
+        
+        НОВОСТИ:
+        """);
         foreach (GameAnnouncement announcement in announcements)
             output.Append($"""
 
-                            ----> {announcement.Title} <----
+            ----> {announcement.Title} <----
 
-                            {announcement.Text}
+            {announcement.Text}
 
             """);
         
