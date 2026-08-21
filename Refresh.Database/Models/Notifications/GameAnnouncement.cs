@@ -11,6 +11,7 @@ public partial class GameAnnouncement
 {
     [Key] public ObjectId AnnouncementId { get; set; } = ObjectId.GenerateNewId();
     public string Title { get; set; }
+    [Column(TypeName = "text")]
     public string Text { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
 }
