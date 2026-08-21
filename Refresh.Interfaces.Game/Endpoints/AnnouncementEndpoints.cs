@@ -53,7 +53,7 @@ public class AnnouncementEndpoints : EndpointGroup
         Привет, {user?.Username}! Сейчас онлайн {playersonline} игроков.
         Хорошей игры!
         
-        НОВОСТИ:
+        НОВОСТИ (можно листать):
         """);
         foreach (GameAnnouncement announcement in announcements)
             output.Append($"""
