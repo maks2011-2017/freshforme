@@ -43,7 +43,7 @@ public class AnnouncementEndpoints : EndpointGroup
         return true;
     }
 
-    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database, GameUser? user)
+    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database, GameUser user)
     {
         IEnumerable<GameAnnouncement> announcements = database.GetAnnouncements().ToList();
         int playersonline = database.GetActiveUserCount();
@@ -123,7 +123,7 @@ public class AnnouncementEndpoints : EndpointGroup
         bool appended;
         StringBuilder output = new();
         
-        appended = AnnounceGetAnnouncements(output, database);
+        appended = AnnounceGetAnnouncements(output, database, user);
         
         if (appended) output.Append('\n');
         appended = AnnounceGetContest(output, token, database, config);
