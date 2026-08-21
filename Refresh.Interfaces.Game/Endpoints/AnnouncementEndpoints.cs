@@ -48,9 +48,8 @@ public class AnnouncementEndpoints : EndpointGroup
         IEnumerable<GameAnnouncement> announcements = database.GetAnnouncements().ToList();
         foreach (GameAnnouncement announcement in announcements)
             output.Append($"""
-            ======================
-            ** {announcement.Title} **
-            ======================
+            ----> {announcement.Title} <----
+            
             {announcement.Text}
 
 
