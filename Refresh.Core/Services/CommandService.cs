@@ -65,6 +65,8 @@ public class CommandService : EndpointService
                 database.AddNotification("real", "bro used SI", user);
                 break;
             }
+
+            
             case "forcematch":
             {
                 if (command.Arguments.IsEmpty)

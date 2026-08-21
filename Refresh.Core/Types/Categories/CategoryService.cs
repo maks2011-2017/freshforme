@@ -36,6 +36,8 @@ public class CategoryService : EndpointService
         new ContestCategory(),
         new AdventureCategory(),
         new TestCategory(),
+
+        new ArchCategory(),
     ];
 
     // User Categories
