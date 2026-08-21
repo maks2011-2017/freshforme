@@ -6,14 +6,14 @@ using Refresh.Database.Query;
 
 namespace Refresh.Core.Types.Categories.Levels;
 
-public class ArchCategory : GameCategory
+public class PobegCategory : GameCategory
 {
-    public ArchCategory() : base("archive", [], false)
+    public PobegCategory() : base("escapes", [], false)
     {
-        this.Name = "Архив";
-        this.Description = "Архивные уровни! (тест)";
+        this.Name = "Побеги";
+        this.Description = "ПОБЕГ ОТ...";
         this.FontAwesomeIcon = "certificate";
-        this.IconHash = "g96508";
+        this.IconHash = "g82777";
         this.PrimaryResultType = ResultType.Level;
     }
     
@@ -21,7 +21,7 @@ public class ArchCategory : GameCategory
         LevelFilterSettings levelFilterSettings, GameUser? _)
     {
         // Передаем массив ключевых слов, которые нужно найти
-        string[] searchTags = { "Архив", "archive", "reupload", "перезалив" };
+        string[] searchTags = { "escape", "побег", "сбеги" };
         
         var levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
         

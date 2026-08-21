@@ -38,6 +38,7 @@ public class CategoryService : EndpointService
         new TestCategory(),
 
         new ArchCategory(),
+        new PobegCategory(),
     ];
 
     // User Categories

@@ -515,6 +515,62 @@ public partial class GameDatabaseContext // Levels
         return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
     }
 
+
+    [Pure]
+    public DatabaseList<GameLevel> SearchForLevelsv2(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string[] queries)
+    {
+    IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
+            .FilterByLevelFilterSettings(user, levelFilterSettings);
+
+    List<GameLevel> totalLevels = new List<GameLevel>();
+
+    foreach (string query in queries)
+    {
+        if (string.IsNullOrWhiteSpace(query)) continue;
+
+        string dbQuery = $"%{query.Trim()}%";
+        
+        // 1. Текстовый поиск
+        var textMatched = validLevels.Where(l =>
+            EF.Functions.ILike(l.Title, dbQuery) ||
+            EF.Functions.ILike(l.Description, dbQuery)
+        ).ToList();
+        
+        // 2. Поиск по ID
+        if (int.TryParse(query, out int id))
+        {
+            GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
+            if (idLevel != null && !textMatched.Contains(idLevel))
+            {
+                textMatched.Add(idLevel);
+            }
+        }
+        
+        // 3. Поиск по автору
+        GameUser? publisher = this.GetUserByUsername(query, false); 
+        if (publisher != null)
+        {
+            var publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
+            foreach (var pl in publisherLevels)
+            {
+                if (!textMatched.Contains(pl)) textMatched.Add(pl);
+            }
+        }
+
+        // Собираем всё в общую кучу, исключая дубликаты
+        foreach (var level in textMatched)
+        {
+            if (!totalLevels.Contains(level))
+            {
+                totalLevels.Add(level);
+            }
+        }
+    }
+
+    // Сортировка и пагинация применяются ОДИН раз для всего списка!
+    return new DatabaseList<GameLevel>(totalLevels.OrderByDescending(l => l.CoolRating), skip, count);
+    }
+
     // [Pure]
 
     // public DatabaseList<GameLevel> SearchForMultipleLevels(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string query, string query2, string query3, string query4)
