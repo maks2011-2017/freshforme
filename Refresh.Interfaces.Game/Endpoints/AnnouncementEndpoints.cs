@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Serialization;
 using Bunkum.Core;
 using Bunkum.Core.Endpoints;
@@ -43,10 +44,10 @@ public class AnnouncementEndpoints : EndpointGroup
         return true;
     }
 
-    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database, GameUser user)
+    private static bool AnnounceGetAnnouncements(StringBuilder output, GameDatabaseContext database, GameUser user, MatchService match)
     {
         IEnumerable<GameAnnouncement> announcements = database.GetAnnouncements().ToList();
-        int playersonline = database.GetActiveUserCount();
+        ushort playersonline = match.RoomAccessor.GetStatistics().PlayerCount;;
         output.Append($"""
 
         Привет, {user?.Username}! Сейчас онлайн {playersonline} игроков.
@@ -94,7 +95,7 @@ public class AnnouncementEndpoints : EndpointGroup
     [MinimumRole(GameUserRole.Restricted)]
     [SuppressMessage("ReSharper", "RedundantAssignment")]
     [RateLimitSettings(420, 12, 380, "announcements-game")]
-    public string Announce(RequestContext context, GameServerConfig config, GameUser user, GameDatabaseContext database, Token token, IDateTimeProvider timeProvider)
+    public string Announce(RequestContext context, GameServerConfig config, GameUser user, GameDatabaseContext database, Token token, IDateTimeProvider timeProvider,  MatchService match)
     {
         if (user.Role == GameUserRole.Restricted)
         {
@@ -123,7 +124,7 @@ public class AnnouncementEndpoints : EndpointGroup
         bool appended;
         StringBuilder output = new();
         
-        appended = AnnounceGetAnnouncements(output, database, user);
+        appended = AnnounceGetAnnouncements(output, database, user, match);
         
         if (appended) output.Append('\n');
         appended = AnnounceGetContest(output, token, database, config);
