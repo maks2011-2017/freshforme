@@ -59,7 +59,6 @@ public class AnnouncementEndpoints : EndpointGroup
             output.Append($"""
 
             ----> {announcement.Title} <----
-
             {announcement.Text}
 
             """);
