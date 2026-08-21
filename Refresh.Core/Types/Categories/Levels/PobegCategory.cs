@@ -14,7 +14,7 @@ public class PobegCategory : GameCategory
         this.Description = "ПОБЕГ ОТ...";
         this.FontAwesomeIcon = "certificate";
         // g82777
-        this.IconHash = "g589235";
+        this.IconHash = "g718426";
         this.PrimaryResultType = ResultType.Level;
     }
     
