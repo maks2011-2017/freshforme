@@ -79,18 +79,18 @@ public class AnnouncementEndpoints : EndpointGroup
         // only show contests for the current game
         if (!contest.AllowedGames.Contains(token.TokenGame)) return false;
         
-        output.Append("There's a contest live right now!\n\n");
+        output.Append("Прямо сейчас проходит конкурс!!! \n\n");
         output.AppendLine($"** {contest.ContestTitle} **");
         
-        output.Append("Summary: ");
+        output.Append("Вкратце: ");
         output.AppendLine(contest.ContestSummary);
         if (!string.IsNullOrWhiteSpace(contest.ContestTheme))
         {
-            output.Append("Theme: ");
+            output.Append("Тема: ");
             output.AppendLine(contest.ContestTheme);
         }
         
-        output.AppendLine($"See more on the website: {config.WebExternalUrl}/contests/{contest.ContestId}");
+        output.AppendLine($"Больше на сайте: {config.WebExternalUrl}/contests/{contest.ContestId}");
         
         return true;
     }
