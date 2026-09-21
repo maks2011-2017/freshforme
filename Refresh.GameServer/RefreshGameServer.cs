@@ -23,6 +23,7 @@ using Refresh.GameServer.Authentication;
 using Refresh.Database.Models.Authentication;
 using Refresh.Database;
 using Refresh.GameServer.Middlewares;
+using Refresh.APIv3.Middlewares;
 using Refresh.Database.Models.Users;
 using Refresh.Database.Models.Levels;
 using Refresh.Interfaces.APIv3;
@@ -132,6 +133,7 @@ public class RefreshGameServer : RefreshServer
         this.Server.AddMiddleware<PspVersionMiddleware>();
         this.Server.AddMiddleware(new PresenceAuthenticationMiddleware(this._configStore.Integration!));
         this.Server.AddMiddleware<RequestStatisticTrackingMiddleware>();
+        this.Server.AddMiddleware<PspJsonp>();
     }
 
     protected override void SetupConfiguration()

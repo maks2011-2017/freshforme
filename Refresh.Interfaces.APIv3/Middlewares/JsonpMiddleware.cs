@@ -7,7 +7,7 @@ using System.Text;
 
 namespace Refresh.APIv3.Middlewares;
 
-public class PspVersionMiddleware : IMiddleware
+public class PspJsonp : IMiddleware
 {
     
     public void HandleRequest(ListenerContext context, Lazy<IDatabaseContext> database, Action next)
