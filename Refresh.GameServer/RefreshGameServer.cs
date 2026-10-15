@@ -144,7 +144,7 @@ public class RefreshGameServer : RefreshServer
     protected override void SetupServices()
     {
         this.Server.AddService<TimeProviderService>(this.GetTimeProvider());
-        this.Server.AddService<GameRateLimitService>(new RateLimiter(new RateLimitSettings(90, 380, 45, "global")));
+        this.Server.AddService<GameRateLimitService>();
         this.Server.AddService<CategoryService>();
         this.Server.AddService(new MatchService(this.Server.Logger, this._configStore.GameServer));
         this.Server.AddService<ImportService>();
@@ -171,7 +171,6 @@ public class RefreshGameServer : RefreshServer
         this.Server.AddService<CommandService>();
         this.Server.AddService<ChallengeGhostRateLimitService>();
         this.Server.AddService<DiscordStaffService>();
-        this.Server.AddService<CacheService>();
 
         if(this._configStore.Integration!.AipiEnabled)
             this.Server.AddService<AipiService>();
@@ -188,12 +187,14 @@ public class RefreshGameServer : RefreshServer
 
     protected virtual void SetupWorkers()
     {
-        this.WorkerManager = RefreshWorkerManager.Create(this.Logger, this._dataStore, this._databaseProvider);
+        this.WorkerManager = RefreshWorkerManager.Create(this.Logger, this._dataStore, this._databaseProvider, this.GetTimeProvider());
         
         if (this._configStore.Integration.DiscordWebhookEnabled && this._configStore.GameServer.PermitShowingOnlineUsers)
         {
             this.WorkerManager.AddJob(new DiscordIntegrationJob(this._configStore.Integration, this._configStore.GameServer));
         }
+        
+        this.WorkerManager.AddJob(new NewUserJob(this._configStore.GameServer.HoursUntilNewAccountNoLongerNew));
     }
 
     /// <inheritdoc/>

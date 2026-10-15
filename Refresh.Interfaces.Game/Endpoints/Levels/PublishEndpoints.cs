@@ -1,7 +1,6 @@
 using System.Net;
 using Bunkum.Core;
 using Bunkum.Core.Endpoints;
-using Bunkum.Core.RateLimit;
 using Bunkum.Core.Responses;
 using Bunkum.Listener.Protocol;
 using Bunkum.Protocols.Http;
@@ -15,6 +14,7 @@ using Refresh.Core.Helpers;
 using Refresh.Core.Importing;
 using Refresh.Core.Services;
 using Refresh.Core.Types.Assets.Validation;
+using Refresh.Core.RateLimits.EndpointRateLimiting;
 using Refresh.Core.Types.Data;
 using Refresh.Database;
 using Refresh.Database.Models;
@@ -30,19 +30,13 @@ namespace Refresh.Interfaces.Game.Endpoints.Levels;
 
 public class PublishEndpoints : EndpointGroup
 {
-    private const int RequestTimeoutDuration = 900; // 15 minutes
-    private const int MaxRequestAmount = 15;
-    private const int RequestBlockDuration = RequestTimeoutDuration;
-    private const string PublishBucket = "level-publish";
-    private const string StartPublishBucket = "level-start-publish";
-    
     /// <summary>
     /// Does basic verification on a level
     /// </summary>
     /// <param name="body">The level to verify</param>
     /// <param name="dataContext">The data context associated with the request</param>
     /// <returns>Whether validation succeeded. OK = success; everything else = failure</returns>
-    private static HttpStatusCode VerifyLevel(GameLevelRequest body, DataContext dataContext, AssetImporter importer, AipiService aipi, bool isActualPublish, bool isInnerLevel = false)
+    private static HttpStatusCode VerifyLevel(GameLevelRequest body, DataContext dataContext, AssetImporter importer, AipiService? aipi, bool isActualPublish, bool isInnerLevel = false)
     {
         if (body.Title.Length > UgcLimits.TitleLimit) 
             body.Title = body.Title[..UgcLimits.TitleLimit];
@@ -181,18 +175,18 @@ public class PublishEndpoints : EndpointGroup
 
     [GameEndpoint("startPublish", ContentType.Xml, HttpMethods.Post)]
     [RequireEmailVerified]
-    [RateLimitSettings(RequestTimeoutDuration, MaxRequestAmount, RequestBlockDuration, StartPublishBucket)]
+    [EndpointRateLimit(EndpointBucketId.GamePrepareLevelPublish)]
     public Response StartPublish(RequestContext context,
         GameLevelRequest body,
         DataContext dataContext,
         GameServerConfig config,
         AssetImporter importer,
-        AipiService aipi,
+        AipiService? aipi,
         GameUser user)
     {
         if (dataContext.User!.IsWriteBlocked(config))
         {
-            dataContext.Database.AddPublishFailNotification("The server is in read-only mode.", body.Title, dataContext.User!);
+            dataContext.Database.AddPublishFailNotification($"The server is in read-only mode.", body.Title, dataContext.User!);
             return Unauthorized;
         }
         
@@ -229,13 +223,13 @@ public class PublishEndpoints : EndpointGroup
 
     [GameEndpoint("publish", ContentType.Xml, HttpMethods.Post)]
     [RequireEmailVerified]
-    [RateLimitSettings(RequestTimeoutDuration, MaxRequestAmount, RequestBlockDuration, PublishBucket)]
+    [EndpointRateLimit(EndpointBucketId.GameRealLevelPublish)]
     public Response PublishLevel(RequestContext context,
         GameLevelRequest body,
         DataContext dataContext,
         GameUser user,
         AssetImporter importer,
-        AipiService aipi,
+        AipiService? aipi,
         GameServerConfig config)
     {
         if (user.IsWriteBlocked(config))
@@ -284,13 +278,11 @@ public class PublishEndpoints : EndpointGroup
             }
 
             List<GameSkillReward> updatedRewards = dataContext.Database.UpdateSkillRewardsForLevel(levelToUpdate, body.SkillRewards);
-            dataContext.Cache.CacheSkillRewards(levelToUpdate, updatedRewards);
             return new Response(GameLevelResponse.FromOld(levelToUpdate, dataContext)!, ContentType.Xml);
         }
 
         GameLevel newLevel = dataContext.Database.AddLevel(body, dataContext.Game, user);
         List<GameSkillReward> newRewards = dataContext.Database.UpdateSkillRewardsForLevel(newLevel, body.SkillRewards);
-        dataContext.Cache.CacheSkillRewards(newLevel, newRewards);
 
         context.Logger.LogInfo(BunkumCategory.UserContent, "User {0} (id: {1}) uploaded level id {2}", user.Username, user.UserId, newLevel.LevelId);
 
@@ -311,6 +303,7 @@ public class PublishEndpoints : EndpointGroup
     }
 
     [GameEndpoint("unpublish/{id}", ContentType.Xml, HttpMethods.Post)]
+    [EndpointRateLimit(EndpointBucketId.DeleteLevel)]
     public Response DeleteLevel(RequestContext context, GameUser user, GameDatabaseContext database, int id, DataContext dataContext)
     {
         GameLevel? level = database.GetLevelById(id);
@@ -319,7 +312,6 @@ public class PublishEndpoints : EndpointGroup
         if (level.Publisher?.UserId != user.UserId) return Unauthorized;
 
         database.DeleteLevel(level);
-        dataContext.Cache.RemoveLevelData(level);
         return OK;
     }
 }

@@ -8,7 +8,7 @@ namespace Refresh.Core.Configuration;
 [SuppressMessage("ReSharper", "RedundantDefaultMemberInitializer")]
 public class GameServerConfig : Config
 {
-    public override int CurrentConfigVersion => 28;
+    public override int CurrentConfigVersion => 29;
     public override int Version { get; set; } = 0;
     
     protected override void Migrate(int oldVer, dynamic oldConfig)
@@ -21,6 +21,7 @@ public class GameServerConfig : Config
             this.TrustedUserPermissions = new();
 
             // filesize quota limit was added during version 11, but the version wasn't bumped, so catch error to be safe
+            // Migrate filesize quota
             if (oldVer >= 11)
             {
                 try
@@ -34,6 +35,7 @@ public class GameServerConfig : Config
                 }
             }
 
+            // Migrate asset flags/safety level
             if (oldVer >= 18)
             {
                 this.NormalUserPermissions.BlockedAssetFlags.Dangerous = (bool)oldConfig.BlockedAssetFlags.Dangerous;
@@ -50,12 +52,13 @@ public class GameServerConfig : Config
                 if (oldVer >= 2)
                 {
                     int oldSafetyLevel = (int)oldConfig.MaximumAssetSafetyLevel;
-                    this.NormalUserPermissions.BlockedAssetFlags = new ConfigAssetFlags
+                    ConfigAssetFlags fromSafetyLevel = new ConfigAssetFlags
                     {
                         Dangerous = oldSafetyLevel < 3,
                         Modded = oldSafetyLevel < 2,
                         Media = oldSafetyLevel < 1,
                     };
+                    this.NormalUserPermissions.BlockedAssetFlags = fromSafetyLevel;
                 }
 
                 // Asset safety level for trusted users was added in config version 12, so dont try to migrate if we are coming from a version older than that
@@ -80,6 +83,7 @@ public class GameServerConfig : Config
             }
 
             // Timed level upload limits were added in version 19.
+            // Migrate level limits
             if (oldVer >= 19)
             {
                 this.NormalUserPermissions.LevelUploadRateLimit.Enabled = (bool)oldConfig.TimedLevelUploadLimits.Enabled;
@@ -99,9 +103,8 @@ public class GameServerConfig : Config
             }
         }
 
-        // In version 28, PhotoUploadRateLimit and PlaylistUploadRateLimit were added to RolePermissions, and various renamings related to level upload rate-limiting
-        // were done to prepare for this: the class TimedLevelUploadLimitProperties was renamed to EntityUploadRateLimitProperties, its attribute LevelQuota was renamed to UploadQuota, 
-        // and RolePermissions' attribute TimedLevelUploadLimits was renamed to LevelUploadRateLimit
+        // In version 28, PhotoUploadRateLimit and PlaylistUploadRateLimit were added to RolePermissions
+        // and various attributes related to level rate-limiting were renamed
         else if (oldVer == 27)
         {
             this.NormalUserPermissions.LevelUploadRateLimit.Enabled = (bool)oldConfig.NormalUserPermissions.TimedLevelUploadLimits.Enabled;
@@ -112,19 +115,40 @@ public class GameServerConfig : Config
             this.TrustedUserPermissions.LevelUploadRateLimit.TimeSpanHours = (int)oldConfig.TrustedUserPermissions.TimedLevelUploadLimits.TimeSpanHours;
             this.TrustedUserPermissions.LevelUploadRateLimit.UploadQuota = (int)oldConfig.TrustedUserPermissions.TimedLevelUploadLimits.LevelQuota;
         }
+        
+        // In version 29, the NewUser role and its related config options
+        // (NewUserPermissions and HoursUntilNewAccountNoLongerNew) were added.
+        // At this point, NormalUserPermissions will already be fully migrated, so we can just copy it.
+        if (oldVer < 29)
+        {
+            this.NewUserPermissions = this.NormalUserPermissions;
+        }
     }
 
     public string LicenseText { get; set; } = "Welcome to Refresh!";
 
     /// <summary>
-    /// Role-specific permissions for normal users and below
+    /// Role-specific permissions for new users.
+    /// </summary>
+    public RolePermissions NewUserPermissions = new();
+    /// <summary>
+    /// Role-specific permissions for normal, not-new users.
     /// </summary>
     public RolePermissions NormalUserPermissions = new();
     /// <summary>
-    /// Role-specific permissions for trusted users and above
+    /// Role-specific permissions for trusted users and above.
     /// </summary>
     public RolePermissions TrustedUserPermissions = new();
 
+    /// <summary>
+    /// The minimum age (time after registration) an account must have before it automatically gets promoted from
+    /// NewUser to User.
+    /// We do this by using NewUserJob to compare the account's age, and if it is old enough, we update their role.
+    /// Currently, the only difference between new users and regular users is that we apply NewUserPermissions
+    /// instead of NormalUserPermissions, which you can freely configure in this config.
+    /// </summary>
+    public int HoursUntilNewAccountNoLongerNew { get; set; } = 24 * 7; // TODO should we think of a better name?
+    
     public bool AllowUsersToUseIpAuthentication { get; set; } = false;
     public bool PermitPsnLogin { get; set; } = true;
     public bool PermitRpcnLogin { get; set; } = true;
