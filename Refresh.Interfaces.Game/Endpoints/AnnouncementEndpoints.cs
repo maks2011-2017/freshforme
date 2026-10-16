@@ -89,7 +89,7 @@ public class AnnouncementEndpoints : EndpointGroup
             output.AppendLine(contest.ContestTheme);
         }
         
-        output.AppendLine($"Больше на сайте: {config.WebExternalUrl}/contests/{contest.ContestId}");
+        output.AppendLine($"Больше на сайте: {config.WebExternalUrl}/contests/{contest.ContestId} и в тг @lbpmemes");
         
         return true;
     }
