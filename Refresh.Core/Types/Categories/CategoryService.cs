@@ -40,6 +40,7 @@ public class CategoryService : EndpointService
         new ArchCategory(),
         new PobegCategory(),
         new ExcludeArchiveCategory(),
+        new OldestLevelsCategory(),
     ];
 
     // User Categories

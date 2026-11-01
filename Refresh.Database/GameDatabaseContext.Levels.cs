@@ -356,6 +356,14 @@ public partial class GameDatabaseContext // Levels
             .FilterByLevelFilterSettings(user, levelFilterSettings)
             .OrderByDescending(l => l.PublishDate), skip, count);
     
+
+    
+    [Pure]
+    public DatabaseList<GameLevel> GetOldestLevels(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings) =>
+        new(this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
+            .FilterByLevelFilterSettings(user, levelFilterSettings)
+            .OrderBy(l => l.PublishDate), skip, count);
+    
     [Pure]
     public DatabaseList<GameLevel> GetRandomLevels(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings)
     {
