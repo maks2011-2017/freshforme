@@ -7,7 +7,7 @@ namespace Refresh.Core.Types.Categories.Levels;
 
 public class ExcludeArchiveCategory : GameCategory
 {
-    public ExcludeArchiveCategory() : base("excludeescapes", [], false)
+    public ExcludeArchiveCategory() : base("NoArchive", [], false)
     {
         this.Name = "БЕЗ АРХИВОВ";
         this.Description = "БЕЗ АРХИВОВ ЧАТ БЕЕЕЗ АРХИВОВ";
@@ -21,7 +21,7 @@ public class ExcludeArchiveCategory : GameCategory
         LevelFilterSettings levelFilterSettings, GameUser? _)
     {
         // Передаем массив ключевых слов, которые нужно найти
-        string[] searchTags = { "АРХИВ", "[АРХИВ]", "(АРХИВ)" };
+        string[] searchTags = { "-АРХИВ" };
         
         var levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
         
