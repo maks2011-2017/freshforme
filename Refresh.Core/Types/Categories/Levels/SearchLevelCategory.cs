@@ -50,7 +50,7 @@ public class SearchLevelCategory : GameCategory
                 levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
                 break;
-            case "!к побеги":
+            case "!к побег":
                 searchTags = [ "escape", "побег", "сбеги" ];
                 
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
