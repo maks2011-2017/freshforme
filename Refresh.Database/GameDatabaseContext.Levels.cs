@@ -632,13 +632,14 @@ public partial class GameDatabaseContext // Levels
     [Pure]
     public DatabaseList<GameLevel> SearchExcludeLevelsv1(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string[] queries)
     {
-        // 1. Инициализируем базовый запрос
+        // 1. Получаем базовый запрос из БД
         IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
                 .FilterByLevelFilterSettings(user, levelFilterSettings);
 
         var includeQueries = new List<string>();
         var excludeQueries = new List<string>();
 
+        // Разделяем ключи на поиск и исключения
         foreach (var q in queries)
         {
             if (string.IsNullOrWhiteSpace(q)) continue;
@@ -654,7 +655,7 @@ public partial class GameDatabaseContext // Levels
             }
         }
 
-        // 2. СНАЧАЛА ЖЕСТКО НАКЛАДЫВАЕМ ИСКЛЮЧЕНИЯ (убираем "-АРХИВ")
+        // 2. НА СТОРОНЕ БД: Жестко вырезаем все исключения (например, "-АРХИВ")
         foreach (string excludeQuery in excludeQueries)
         {
             string dbExclude = $"%{excludeQuery}%";
@@ -669,49 +670,62 @@ public partial class GameDatabaseContext // Levels
             );
         }
 
-        // 3. СТРОИМ РЕЗУЛЬТАТ
-        IQueryable<GameLevel> searchResult;
-
-        if (includeQueries.Any())
+        // Если поисковых запросов («включений») вообще нет (как в категории "БЕЗ АРХИВОВ"),
+        // мы просто берем ВСЕ уровни, где нет архивов, сортируем и отдаем в DatabaseList
+        if (!includeQueries.Any())
         {
-            // Если есть поисковые слова, то берем только совпадения (начиная со空)
-            searchResult = validLevels.Where(l => false);
+            var allCleanLevels = validLevels.OrderByDescending(l => l.CoolRating).ToList();
+            return new DatabaseList<GameLevel>(allCleanLevels, skip, count);
+        }
 
-            foreach (string query in includeQueries)
+        // 3. Если есть поисковые запросы — ищем по ним внутри уже очищенного validLevels
+        List<GameLevel> totalLevels = new List<GameLevel>();
+
+        foreach (string query in includeQueries)
+        {
+            string dbQuery = $"%{query}%";
+            
+            // Текстовый поиск (АРХИВОВ тут уже гарантированно НЕТ)
+            var textMatched = validLevels.Where(l =>
+                EF.Functions.ILike(l.Title, dbQuery) ||
+                EF.Functions.ILike(l.Description, dbQuery)
+            ).ToList();
+            
+            // Поиск по ID
+            if (int.TryParse(query, out int id))
             {
-                string dbQuery = $"%{query}%";
-                GameUser? publisher = this.GetUserByUsername(query, false);
-                int.TryParse(query, out int id);
+                GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
+                if (idLevel != null && !textMatched.Contains(idLevel))
+                {
+                    textMatched.Add(idLevel);
+                }
+            }
+            
+            // Поиск по автору
+            GameUser? publisher = this.GetUserByUsername(query, false); 
+            if (publisher != null)
+            {
+                var publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
+                foreach (var pl in publisherLevels)
+                {
+                    if (!textMatched.Contains(pl)) textMatched.Add(pl);
+                }
+            }
 
-                var currentMatch = validLevels.Where(l =>
-                    EF.Functions.ILike(l.Title, dbQuery) ||
-                    EF.Functions.ILike(l.Description, dbQuery) ||
-                    (id != 0 && l.LevelId == id) ||
-                    (publisher != null && l.Publisher == publisher)
-                );
-
-                searchResult = searchResult.Union(currentMatch);
+            // Собираем в общую кучу без дубликатов
+            foreach (var level in textMatched)
+            {
+                if (!totalLevels.Contains(level))
+                {
+                    totalLevels.Add(level);
+                }
             }
         }
-        else
-        {
-            // ЕСЛИ ПОИСКОВЫХ СЛОВ НЕТ (как в категории "БЕЗ АРХИВОВ")
-            // Результатом будут ВСЕ уровни, из которых мы уже вырезали архивы на шаге 2!
-            searchResult = validLevels;
-        }
 
-        // 4. Пагинация и подсчет общего количества
-        int totalCount = searchResult.Count();
-
-        List<GameLevel> resultLevels = searchResult
-            .OrderByDescending(l => l.CoolRating)
-            .Skip(skip)
-            .Take(count)
-            .ToList(); 
-
-        // ОБЯЗАТЕЛЬНО передавай totalCount последним аргументом, чтобы пагинация на фронте видела, сколько всего уровней!
-        return new DatabaseList<GameLevel>(resultLevels, skip, count); 
+        // Возвращаем результат точно так же, как в твоем SearchForLevelsv2
+        return new DatabaseList<GameLevel>(totalLevels.OrderByDescending(l => l.PublishDate), skip, count);
     }
+
 
 
     [Pure]
