@@ -710,7 +710,7 @@ public partial class GameDatabaseContext // Levels
             .ToList(); 
 
         // ОБЯЗАТЕЛЬНО передавай totalCount последним аргументом, чтобы пагинация на фронте видела, сколько всего уровней!
-        return new DatabaseList<GameLevel>(resultLevels, skip, totalCount); 
+        return new DatabaseList<GameLevel>(resultLevels, skip, count); 
     }
 
 
