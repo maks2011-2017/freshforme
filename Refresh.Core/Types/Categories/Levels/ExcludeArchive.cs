@@ -21,7 +21,7 @@ public class ExcludeArchiveCategory : GameCategory
         LevelFilterSettings levelFilterSettings, GameUser? _)
     {
         // Передаем массив ключевых слов, которые нужно найти
-        string[] searchTags = { "АРХИВ" };
+        string[] searchTags = { "АРХИВ", "[АРХИВ]", "(АРХИВ)" };
         
         var levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
         

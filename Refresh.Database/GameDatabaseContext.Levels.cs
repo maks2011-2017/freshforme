@@ -698,7 +698,7 @@ public partial class GameDatabaseContext // Levels
         int totalCount = searchFiltered.Count();
 
         List<GameLevel> resultLevels = searchFiltered
-            .OrderByDescending(l => l.PublishDate)
+            .OrderByDescending(l => l.CoolRating)
             .Skip(skip)
             .Take(count)
             .ToList(); 
