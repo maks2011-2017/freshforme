@@ -56,6 +56,12 @@ public class SearchLevelCategory : GameCategory
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
                 break;
+            case "!к картель":
+                searchTags = [ "картел" ];
+                
+                levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                
+                break;
             case "!к конкурс":
                 // try to find a contest by the query parameter
                 string? contestId = context.QueryString["contest"];
