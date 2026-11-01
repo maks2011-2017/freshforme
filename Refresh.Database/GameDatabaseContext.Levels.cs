@@ -685,9 +685,12 @@ public partial class GameDatabaseContext // Levels
             int.TryParse(excludeQuery, out int excludeId);
 
             searchFiltered = searchFiltered.Where(l =>
+                // 1. Текст НЕ должен содержать запрещенное слово
                 !EF.Functions.ILike(l.Title, dbExclude) &&
                 !EF.Functions.ILike(l.Description, dbExclude) &&
+                // 2. ID уровня НЕ должен быть равен запрещенному ID (если он был распарсен)
                 (excludeId == 0 || l.LevelId != excludeId) &&
+                // 3. Автор НЕ должен быть равен запрещенному автору (если он был найден)
                 (excludePublisher == null || l.Publisher != excludePublisher)
             );
         }
