@@ -5,6 +5,7 @@ using Refresh.Database.Models.Authentication;
 using Refresh.Database.Models.Levels;
 using Refresh.Database.Models.Users;
 using Refresh.Database.Query;
+using Refresh.Database.Models.Contests;
 
 namespace Refresh.Core.Types.Categories.Levels;
 
@@ -35,11 +36,50 @@ public class SearchLevelCategory : GameCategory
         string? query = context.QueryString["query"]
                         ?? context.QueryString["textFilter"]; // LBP3 sends this instead of query
         if (query == null) return null;
+        DatabaseList<GameLevel>? levels;
+        string[] searchTags;
+        switch (query)
+        {
+            case "-к архив":
+                searchTags = ["Архив", "archive", "reupload", "перезалив" ];
+                levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                break;
+            case "-к неархив":
+                searchTags = [ "-АРХИВ" ];
+                
+                levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                
+                break;
+            case "-к побеги":
+                searchTags = [ "escape", "побег", "сбеги" ];
+                
+                levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                
+                break;
+            case "-к конкурс":
+                // try to find a contest by the query parameter
+                string? contestId = context.QueryString["contest"];
+                GameContest? contest = dataContext.Database.GetContestById(contestId);
+                
+                // if we can't find one by a query param, try getting an active contest instead
+                contest ??= dataContext.Database.GetNewestActiveContest();
 
-        DatabaseList<GameLevel>? levels = !levelFilterSettings.DisplayLevels
-            ? null
-            : dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings, query);
-        
+                // if there's no active contest, then try to use the last one that ended
+                contest ??= dataContext.Database.GetLatestCompletedContest();
+                
+                // if not, then fail
+                if (contest == null)
+                    return null;
+                
+                return new(dataContext.Database.GetLevelsFromContest(contest, count, skip, dataContext.User, levelFilterSettings));
+                
+            
+            default:
+                    levels = dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings,query);
+                    break;
+                
+        }
+
         // TODO Allow specifying custom params in queries, so users could filter entity types in LBP1/2 as well.
         // TODO Also allow users to explicitly tell us to not search in name or description.
         //
