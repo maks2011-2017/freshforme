@@ -40,23 +40,23 @@ public class SearchLevelCategory : GameCategory
         string[] searchTags;
         switch (query)
         {
-            case "-к архив":
+            case "!к архив":
                 searchTags = ["Архив", "archive", "reupload", "перезалив" ];
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 break;
-            case "-к неархив":
+            case "!к неархив":
                 searchTags = [ "-АРХИВ" ];
                 
                 levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
                 break;
-            case "-к побеги":
+            case "!к побеги":
                 searchTags = [ "escape", "побег", "сбеги" ];
                 
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
                 break;
-            case "-к конкурс":
+            case "!к конкурс":
                 // try to find a contest by the query parameter
                 string? contestId = context.QueryString["contest"];
                 GameContest? contest = dataContext.Database.GetContestById(contestId);
