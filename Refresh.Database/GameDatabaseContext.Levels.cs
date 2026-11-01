@@ -628,6 +628,80 @@ public partial class GameDatabaseContext // Levels
     //     return new DatabaseList<GameLevel>(levels.OrderByDescending(l => l.CoolRating), skip, count);
     // }
 
+    [Pure]
+    public DatabaseList<GameLevel> SearchExcludeLevelsv1(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string[] queries)
+    {
+        // 1. Инициализируем базовый запрос (SQL еще не выполняется)
+        IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
+                .FilterByLevelFilterSettings(user, levelFilterSettings);
+
+        // Разделяем входящие запросы на включающие и исключающие
+        var includeQueries = new List<string>();
+        var excludeQueries = new List<string>();
+
+        foreach (var q in queries)
+        {
+            if (string.IsNullOrWhiteSpace(q)) continue;
+            
+            string trimmed = q.Trim();
+            // Если слово начинается с '-', относим его к исключениям
+            if (trimmed.StartsWith('-') && trimmed.Length > 1)
+            {
+                excludeQueries.Add(trimmed.Substring(1).Trim());
+            }
+            else
+            {
+                includeQueries.Add(trimmed);
+            }
+        }
+
+        // Если нет поисковых слов, возвращаем пустой список (или все уровни, зависит от вашей логики)
+        if (!includeQueries.Any())
+        {
+            return new DatabaseList<GameLevel>(new List<GameLevel>(), skip, count);
+        }
+
+        // 2. Строим условия ДЛЯ ПОИСКА (Логика: Matches Query 1 OR Matches Query 2...)
+        IQueryable<GameLevel> searchFiltered = validLevels.Where(l => false); // Заглушка для OR
+
+        foreach (string query in includeQueries)
+        {
+            string dbQuery = $"%{query}%";
+            GameUser? publisher = this.GetUserByUsername(query, false);
+            int.TryParse(query, out int id);
+
+            searchFiltered = searchFiltered.Union(validLevels.Where(l =>
+                EF.Functions.ILike(l.Title, dbQuery) ||
+                EF.Functions.ILike(l.Description, dbQuery) ||
+                (id != 0 && l.LevelId == id) ||
+                (publisher != null && l.Publisher == publisher)
+            ));
+        }
+
+        foreach (string excludeQuery in excludeQueries)
+        {
+            string dbExclude = $"%{excludeQuery}%";
+            GameUser? excludePublisher = this.GetUserByUsername(excludeQuery, false);
+            int.TryParse(excludeQuery, out int excludeId);
+
+            searchFiltered = searchFiltered.Where(l =>
+                !EF.Functions.ILike(l.Title, dbExclude) &&
+                !EF.Functions.ILike(l.Description, dbExclude) &&
+                (excludeId == 0 || l.LevelId != excludeId) &&
+                (excludePublisher == null || l.Publisher != excludePublisher)
+            );
+        }
+
+        int totalCount = searchFiltered.Count();
+
+        List<GameLevel> resultLevels = searchFiltered
+            .OrderByDescending(l => l.PublishDate)
+            .Skip(skip)
+            .Take(count)
+            .ToList(); 
+
+        return new DatabaseList<GameLevel>(resultLevels, skip, count); 
+    }
 
     [Pure]
     public int GetTotalLevelCount(TokenGame game) => this.GameLevels.FilterByGameVersion(game).Count(l => l.StoryId == 0);

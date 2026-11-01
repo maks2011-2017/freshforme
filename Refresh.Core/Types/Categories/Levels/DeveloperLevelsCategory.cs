@@ -13,7 +13,7 @@ public class DeveloperLevelsCategory : GameCategory
         this.Description = "Уровни из сюжетного режима LittleBigPlanet.";
         this.FontAwesomeIcon = "certificate";
         this.IconHash = "g820604";
-        this.Hidden = true; // TODO: Set to false when we import story level names
+        this.Hidden = false; // TODO: Set to false when we import story level names
         this.PrimaryResultType = ResultType.Level;
     }
 
