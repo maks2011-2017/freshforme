@@ -33,5 +33,7 @@ public static partial class LevelPrefixes
         "(archived)", "[archived]",
         "(republish)", "[republish]",
         "(republished)", "[republished]",
+        "(перезалив)", "[перезалив]",
+        "(архив)", "[архив]",
     };
 }

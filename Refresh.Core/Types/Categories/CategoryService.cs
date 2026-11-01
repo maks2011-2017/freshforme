@@ -39,6 +39,7 @@ public class CategoryService : EndpointService
 
         new ArchCategory(),
         new PobegCategory(),
+        new ExcludeArchiveCategory(),
     ];
 
     // User Categories
