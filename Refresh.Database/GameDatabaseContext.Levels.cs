@@ -654,14 +654,7 @@ public partial class GameDatabaseContext // Levels
             }
         }
 
-        // Если нет поисковых слов, возвращаем пустой список
-        if (!includeQueries.Any())
-        {
-            return new DatabaseList<GameLevel>(new List<GameLevel>(), skip, count);
-        }
-
-        // 2. СНАЧАЛА ЖЕСТКО НАКЛАДЫВАЕМ ИСКЛЮЧЕНИЯ (включая "-архив")
-        // Это гарантирует, что в итоговом SQL условия пойдут через оператор AND NOT
+        // 2. СНАЧАЛА ЖЕСТКО НАКЛАДЫВАЕМ ИСКЛЮЧЕНИЯ (убираем "-АРХИВ")
         foreach (string excludeQuery in excludeQueries)
         {
             string dbExclude = $"%{excludeQuery}%";
@@ -676,28 +669,35 @@ public partial class GameDatabaseContext // Levels
             );
         }
 
-        // 3. СТРОИМ УСЛОВИЯ ПОИСКА ЧЕРЕЗ КОРРЕКТНЫЙ И БЕЗОПАСНЫЙ LINQ
-        // Создаем пустой IQueryable того же типа для объединения результатов
-        IQueryable<GameLevel> searchResult = validLevels.Where(l => false);
+        // 3. СТРОИМ РЕЗУЛЬТАТ
+        IQueryable<GameLevel> searchResult;
 
-        foreach (string query in includeQueries)
+        if (includeQueries.Any())
         {
-            string dbQuery = $"%{query}%";
-            GameUser? publisher = this.GetUserByUsername(query, false);
-            int.TryParse(query, out int id);
+            // Если есть поисковые слова, то берем только совпадения (начиная со空)
+            searchResult = validLevels.Where(l => false);
 
-            // Берутся только те уровни, которые УЖЕ прошли фильтр исключений сверху,
-            // и подходят под текущее поисковое слово
-            var currentMatch = validLevels.Where(l =>
-                EF.Functions.ILike(l.Title, dbQuery) ||
-                EF.Functions.ILike(l.Description, dbQuery) ||
-                (id != 0 && l.LevelId == id) ||
-                (publisher != null && l.Publisher == publisher)
-            );
+            foreach (string query in includeQueries)
+            {
+                string dbQuery = $"%{query}%";
+                GameUser? publisher = this.GetUserByUsername(query, false);
+                int.TryParse(query, out int id);
 
-            // Объединяем через Union. Так как validLevels уже очищен от архивов,
-            // в результатах Union архивов не будет физически!
-            searchResult = searchResult.Union(currentMatch);
+                var currentMatch = validLevels.Where(l =>
+                    EF.Functions.ILike(l.Title, dbQuery) ||
+                    EF.Functions.ILike(l.Description, dbQuery) ||
+                    (id != 0 && l.LevelId == id) ||
+                    (publisher != null && l.Publisher == publisher)
+                );
+
+                searchResult = searchResult.Union(currentMatch);
+            }
+        }
+        else
+        {
+            // ЕСЛИ ПОИСКОВЫХ СЛОВ НЕТ (как в категории "БЕЗ АРХИВОВ")
+            // Результатом будут ВСЕ уровни, из которых мы уже вырезали архивы на шаге 2!
+            searchResult = validLevels;
         }
 
         // 4. Пагинация и подсчет общего количества
@@ -709,9 +709,9 @@ public partial class GameDatabaseContext // Levels
             .Take(count)
             .ToList(); 
 
-        return new DatabaseList<GameLevel>(resultLevels, skip, count); 
+        // ОБЯЗАТЕЛЬНО передавай totalCount последним аргументом, чтобы пагинация на фронте видела, сколько всего уровней!
+        return new DatabaseList<GameLevel>(resultLevels, skip, totalCount); 
     }
-
 
 
     [Pure]
