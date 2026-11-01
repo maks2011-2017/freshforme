@@ -18,5 +18,5 @@ public class OldestLevelsCategory : GameCategory
     
     public override DatabaseResultList? Fetch(RequestContext context, int skip, int count, DataContext dataContext,
         LevelFilterSettings levelFilterSettings, GameUser? _) 
-        => new(dataContext.Database.GetNewestLevels(count, skip, dataContext.User, levelFilterSettings));
+        => new(dataContext.Database.GetOldestLevels(count, skip, dataContext.User, levelFilterSettings));
 }
