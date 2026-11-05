@@ -83,11 +83,11 @@ public class SearchLevelCategory : GameCategory
                 
             
             default:
-                    searchTags = query.Split();
+                    // searchTags = query.Split();
                     
-                    levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                    // levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
                     
-                    // levels = dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings,query);
+                    levels = dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings,query);
                     break;
                 
         }
