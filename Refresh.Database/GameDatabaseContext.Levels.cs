@@ -674,7 +674,8 @@ public partial class GameDatabaseContext // Levels
                 !EF.Functions.ILike(l.Title, dbExclude) && 
                 !EF.Functions.ILike(l.Description, dbExclude) &&
                 (excludeId == 0 || l.LevelId != excludeId) &&
-                (excludePublisher == null || l.Publisher != excludePublisher)
+                // Безопасная проверка на null, чтобы не было CS8602 и падений в SQL
+                (excludePublisher == null || (l.Publisher != null && l.Publisher.UserId != excludePublisher.UserId))
             );
         }
 
@@ -686,55 +687,87 @@ public partial class GameDatabaseContext // Levels
             return new DatabaseList<GameLevel>(allCleanLevels, skip, count);
         }
 
-        // 3. Если есть поисковые запросы — ищем по ним внутри уже очищенного validLevels
-        List<GameLevel> totalLevels = new List<GameLevel>();
+        // 3. НА СТОРОНЕ БД: Строим динамическое условие OR для всех поисковых слов
+        var parameter = Expression.Parameter(typeof(GameLevel), "l");
+        Expression? completeSearchExpression = null;
+
+        // Свойства для быстрой сборки выражений
+        var titleProperty = Expression.Property(parameter, nameof(GameLevel.Title));
+        var descProperty = Expression.Property(parameter, nameof(GameLevel.Description));
+        var levelIdProperty = Expression.Property(parameter, nameof(GameLevel.LevelId));
+        var publisherProperty = Expression.Property(parameter, nameof(GameLevel.Publisher));
+
+        // Находим метод ILike в специальном классе для PostgreSQL
+        var iLikeMethod = typeof(NpgsqlDbFunctionsExtensions).GetMethod(
+            "ILike", 
+            new[] { typeof(DbFunctions), typeof(string), typeof(string) }
+        );
+
+        // Если проект вдруг использует не PostgreSQL, а обычный LIKE в качестве запасного варианта
+        if (iLikeMethod == null)
+        {
+            iLikeMethod = typeof(DbFunctionsExtensions).GetMethod(
+                nameof(DbFunctionsExtensions.Like), 
+                new[] { typeof(DbFunctions), typeof(string), typeof(string) }
+            )!;
+        }
+
+        var efFunctionsProperty = typeof(EF).GetProperty(nameof(EF.Functions))!;
+        var efFunctionsExpression = Expression.Property(null, efFunctionsProperty);
 
         foreach (string query in includeQueries)
         {
             string dbQuery = $"%{query}%";
-            
-            // Текстовый поиск (АРХИВОВ тут уже гарантированно НЕТ)
-            var textMatched = validLevels.Where(l =>
-                EF.Functions.ILike(l.Title, dbQuery) ||
-                EF.Functions.ILike(l.Description, dbQuery)
-            ).ToList();
-            
-            // Поиск по ID
-            if (int.TryParse(query, out int id))
+            int.TryParse(query, out int id);
+            GameUser? publisher = this.GetUserByUsername(query, false);
+
+            // 3a. Текстовый поиск по Title и Description
+            var titleLike = Expression.Call(iLikeMethod, efFunctionsExpression, titleProperty, Expression.Constant(dbQuery));
+            var descLike = Expression.Call(iLikeMethod, efFunctionsExpression, descProperty, Expression.Constant(dbQuery));
+            Expression wordExpression = Expression.OrElse(titleLike, descLike);
+
+            // 3b. Поиск по ID -> l.LevelId == id
+            if (id != 0)
             {
-                GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
-                if (idLevel != null && !textMatched.Contains(idLevel))
-                {
-                    textMatched.Add(idLevel);
-                }
+                var idEqual = Expression.Equal(levelIdProperty, Expression.Constant(id));
+                wordExpression = Expression.OrElse(wordExpression, idEqual);
             }
-            
-            // Поиск по автору
-            GameUser? publisher = this.GetUserByUsername(query, false); 
+
+            // 3c. Поиск по автору -> l.Publisher != null && l.Publisher.UserId == publisher.UserId
             if (publisher != null)
             {
-                var publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
-                foreach (var pl in publisherLevels)
-                {
-                    if (!textMatched.Contains(pl)) textMatched.Add(pl);
-                }
+                // Проверка: l.Publisher != null
+                var publisherNotNull = Expression.NotEqual(publisherProperty, Expression.Constant(null, typeof(GameUser)));
+                
+                // Проверка: l.Publisher.UserId == publisher.UserId
+                var publisherIdProperty = Expression.Property(publisherProperty, nameof(GameUser.UserId));
+                var publisherIdEqual = Expression.Equal(publisherIdProperty, Expression.Constant(publisher.UserId));
+                
+                // Объединяем через логическое И (AndAlso): l.Publisher != null && l.Publisher.UserId == ...
+                var publisherCondition = Expression.AndAlso(publisherNotNull, publisherIdEqual);
+                
+                wordExpression = Expression.OrElse(wordExpression, publisherCondition);
             }
 
-            // Собираем в общую кучу без дубликатов
-            foreach (var level in textMatched)
-            {
-                if (!totalLevels.Contains(level))
-                {
-                    totalLevels.Add(level);
-                }
-            }
+            // Объединяем условия разных поисковых слов через OR (OrElse)
+            completeSearchExpression = completeSearchExpression == null 
+                ? wordExpression 
+                : Expression.OrElse(completeSearchExpression, wordExpression);
         }
 
-        // Возвращаем результат точно так же, как в твоем SearchForLevelsv2
-        return new DatabaseList<GameLevel>(totalLevels.OrderByDescending(l => l.PublishDate), skip, count);
+        // Применяем построенное дерево выражений к нашему IQueryable запросу
+        if (completeSearchExpression != null)
+        {
+            var lambda = Expression.Lambda<Func<GameLevel, bool>>(completeSearchExpression, parameter);
+            validLevels = validLevels.Where(lambda);
+        }
+
+        // Выполняем ровно ОДИН финальный запрос к базе данных
+        var totalLevels = validLevels.OrderByDescending(l => l.PublishDate).ToList();
+
+        // Возвращаем результат точно так же, как ожидает ваш проект
+        return new DatabaseList<GameLevel>(totalLevels, skip, count);
     }
-
-
 
     [Pure]
     public int GetTotalLevelCount(TokenGame game) => this.GameLevels.FilterByGameVersion(game).Count(l => l.StoryId == 0);

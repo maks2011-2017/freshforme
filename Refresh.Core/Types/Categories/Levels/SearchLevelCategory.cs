@@ -6,6 +6,7 @@ using Refresh.Database.Models.Levels;
 using Refresh.Database.Models.Users;
 using Refresh.Database.Query;
 using Refresh.Database.Models.Contests;
+using NotEnoughLogs;
 
 namespace Refresh.Core.Types.Categories.Levels;
 
