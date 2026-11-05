@@ -638,15 +638,16 @@ public partial class GameDatabaseContext // Levels
     // }
 
     [Pure]
-    public DatabaseList<GameLevel> SearchExcludeLevelsv2(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string[] queries)
+    public DatabaseList<GameLevel> SearchExcludeLevelsv1(int count, int skip, GameUser? user, LevelFilterSettings levelFilterSettings, string[] queries)
     {
-        // 1. Базовый запрос (IQueryable — в базу пока не ходим)
+        // 1. Получаем базовый запрос из БД
         IQueryable<GameLevel> validLevels = this.GetLevelsByGameVersion(levelFilterSettings.GameVersion)
                 .FilterByLevelFilterSettings(user, levelFilterSettings);
 
         var includeQueries = new List<string>();
         var excludeQueries = new List<string>();
 
+        // Разделяем ключи на поиск и исключения
         foreach (var q in queries)
         {
             if (string.IsNullOrWhiteSpace(q)) continue;
@@ -662,55 +663,76 @@ public partial class GameDatabaseContext // Levels
             }
         }
 
-        // 2. Накладываем исключения на IQueryable (строим SQL)
+        // 2. НА СТОРОНЕ БД: Жестко вырезаем все исключения (например, "-АРХИВ")
         foreach (string excludeQuery in excludeQueries)
         {
             string dbExclude = $"%{excludeQuery}%";
-            int.TryParse(excludeQuery, out int excludeId);
             GameUser? excludePublisher = this.GetUserByUsername(excludeQuery, false);
+            int.TryParse(excludeQuery, out int excludeId);
 
             validLevels = validLevels.Where(l => 
                 !EF.Functions.ILike(l.Title, dbExclude) && 
                 !EF.Functions.ILike(l.Description, dbExclude) &&
                 (excludeId == 0 || l.LevelId != excludeId) &&
-                (excludePublisher == null || l.PublisherId != excludePublisher.UserId) // Сравнение по ID, а не по объекту
+                (excludePublisher == null || l.Publisher != excludePublisher)
             );
         }
 
-        // Если нет поисковых запросов ("только исключить")
+        // Если поисковых запросов («включений») вообще нет (как в категории "БЕЗ АРХИВОВ"),
+        // мы просто берем ВСЕ уровни, где нет архивов, сортируем и отдаем в DatabaseList
         if (!includeQueries.Any())
         {
-            // Сортируем и отдаем IQueryable в DatabaseList, чтобы Skip/Take отработали в БД
-            var sortedLevels = validLevels.OrderByDescending(l => l.CoolRating);
-            return new DatabaseList<GameLevel>(sortedLevels, skip, count);
+            var allCleanLevels = validLevels.OrderByDescending(l => l.CoolRating).ToList();
+            return new DatabaseList<GameLevel>(allCleanLevels, skip, count);
         }
 
-        // 3. Накладываем включения (поиск) через OR динамически на стороне БД
-        // Объединяем условия поиска: уровень должен соответствовать ХОТЯ БЫ ОДНОМУ включению
-        IQueryable<GameLevel> searchResult = validLevels.Where(l => false); // Изначально пустой фильтр для объединения через OR
+        // 3. Если есть поисковые запросы — ищем по ним внутри уже очищенного validLevels
+        List<GameLevel> totalLevels = new List<GameLevel>();
 
         foreach (string query in includeQueries)
         {
             string dbQuery = $"%{query}%";
-            int.TryParse(query, out int id);
-            GameUser? publisher = this.GetUserByUsername(query, false);
-
-            // Расширяем запрос через OR для каждого слова
-            searchResult = searchResult.Union(validLevels.Where(l =>
+            
+            // Текстовый поиск (АРХИВОВ тут уже гарантированно НЕТ)
+            var textMatched = validLevels.Where(l =>
                 EF.Functions.ILike(l.Title, dbQuery) ||
-                EF.Functions.ILike(l.Description, dbQuery) ||
-                (id != 0 && l.LevelId == id) ||
-                (publisher != null && l.PublisherId == publisher.UserId)
-            ));
+                EF.Functions.ILike(l.Description, dbQuery)
+            ).ToList();
+            
+            // Поиск по ID
+            if (int.TryParse(query, out int id))
+            {
+                GameLevel? idLevel = validLevels.FirstOrDefault(l => l.LevelId == id);
+                if (idLevel != null && !textMatched.Contains(idLevel))
+                {
+                    textMatched.Add(idLevel);
+                }
+            }
+            
+            // Поиск по автору
+            GameUser? publisher = this.GetUserByUsername(query, false); 
+            if (publisher != null)
+            {
+                var publisherLevels = validLevels.Where(l => l.Publisher == publisher).ToList();
+                foreach (var pl in publisherLevels)
+                {
+                    if (!textMatched.Contains(pl)) textMatched.Add(pl);
+                }
+            }
+
+            // Собираем в общую кучу без дубликатов
+            foreach (var level in textMatched)
+            {
+                if (!totalLevels.Contains(level))
+                {
+                    totalLevels.Add(level);
+                }
+            }
         }
 
-        // Итоговая сортировка по дате публикации
-        var finalQuery = searchResult.OrderByDescending(l => l.PublishDate);
-
-        // База данных получит ОДИН запрос, содержащий все условия, а также LIMIT (Take) и OFFSET (Skip)
-        return new DatabaseList<GameLevel>(finalQuery, skip, count);
+        // Возвращаем результат точно так же, как в твоем SearchForLevelsv2
+        return new DatabaseList<GameLevel>(totalLevels.OrderByDescending(l => l.PublishDate), skip, count);
     }
-
 
 
 
