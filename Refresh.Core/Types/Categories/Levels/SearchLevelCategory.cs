@@ -45,7 +45,7 @@ public class SearchLevelCategory : GameCategory
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 break;
             case "!к неархив":
-                searchTags = [ "-АРХИВ" ];
+                searchTags = [ "-АРХИВ" , "-ARCHIVE"];
                 
                 levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
@@ -62,6 +62,7 @@ public class SearchLevelCategory : GameCategory
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
                 break;
+            // В БУДУЩЕМ ДОБАВИТЬ -ТЕГИ, ПРИДУМАТЬ ОФОРМЛЕНИЕ
             case "!к конкурс":
                 // try to find a contest by the query parameter
                 string? contestId = context.QueryString["contest"];
@@ -81,7 +82,11 @@ public class SearchLevelCategory : GameCategory
                 
             
             default:
-                    levels = dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings,query);
+                    searchTags = query.Split();
+                    
+                    levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
+                    
+                    // levels = dataContext.Database.SearchForLevels(count, skip, dataContext.User, levelFilterSettings,query);
                     break;
                 
         }
