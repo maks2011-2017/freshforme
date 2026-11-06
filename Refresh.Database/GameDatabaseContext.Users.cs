@@ -17,7 +17,8 @@ namespace Refresh.Database;
 public partial class GameDatabaseContext // Users
 {
     private IQueryable<GameUser> GameUsersIncluded => this.GameUsers
-        .Include(u => u.Statistics);
+        .Include(u => u.Statistics)
+        .Include(u => u.Badges);
     
     private IQueryable<PreviousUsername> PreviousUsernamesIncluded => this.PreviousUsernames
         .Include(u => u.User)
