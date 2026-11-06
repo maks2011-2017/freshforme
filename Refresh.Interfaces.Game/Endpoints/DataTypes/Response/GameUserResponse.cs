@@ -75,7 +75,7 @@ public class GameUserResponse : IDataConvertableFrom<GameUserResponse, GameUser>
 
         GameUserResponse response = new()
         {
-            Description = old.Description,
+            Description = old.Description + "\n \n БЕЙДЖИКИ: ",
             Location = new GameLocation(old.LocationX, old.LocationY),
             PlanetsHash = "0",
             
