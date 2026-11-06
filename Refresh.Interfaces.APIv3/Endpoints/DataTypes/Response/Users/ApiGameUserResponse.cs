@@ -1,6 +1,7 @@
 using JetBrains.Annotations;
 using Refresh.Core.Types.Data;
 using Refresh.Database.Models.Users;
+using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Badge;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Categories;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Data;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Users.Rooms;
@@ -16,7 +17,7 @@ public class ApiGameUserResponse : IApiResponse, IDataConvertableFrom<ApiGameUse
     public required string VitaIconHash { get; set; }
     public required string BetaIconHash { get; set; }
     public required bool Galochka { get; set; }
-    public List<UserBadge> Badges { get; set; } = new();
+    public List<ApiBadgeResponse> Badges { get; set; } = new();
 
     public required string YayFaceHash { get; set; }
     public required string BooFaceHash { get; set; }
@@ -57,7 +58,13 @@ public class ApiGameUserResponse : IApiResponse, IDataConvertableFrom<ApiGameUse
             OwnRelations = ApiGameUserOwnRelationsResponse.FromOld(user, dataContext),
             ActiveRoom = ApiGameRoomResponse.FromOld(dataContext.Match.RoomAccessor.GetRoomByUser(user), dataContext),
             Galochka = user.Galochka,
-            Badges = user.Badges,
+            Badges = user.Badges.Select(ub => new ApiBadgeResponse
+            {
+                BadgeId = ub.BadgeId.ToString(),
+                Name = ub.Name,
+                Description = ub.Description,
+                IconUrl = ub.IconUrl,
+            }).ToList(),
         };
     }
 

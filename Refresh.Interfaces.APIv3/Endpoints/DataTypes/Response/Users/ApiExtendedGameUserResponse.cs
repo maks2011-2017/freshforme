@@ -2,6 +2,7 @@ using JetBrains.Annotations;
 using Refresh.Core.Types.Data;
 using Refresh.Database.Models.Authentication;
 using Refresh.Database.Models.Users;
+using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Badge;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Data;
 using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Users.Rooms;
 
@@ -15,7 +16,6 @@ public class ApiExtendedGameUserResponse : ApiGameUserResponse, IApiResponse, ID
 {
     public required string? BanReason { get; set; }
     public required DateTimeOffset? BanExpiryDate { get; set; }
-    
     public required bool RpcnAuthenticationAllowed { get; set; }
     public required bool PsnAuthenticationAllowed { get; set; }
 
@@ -77,6 +77,14 @@ public class ApiExtendedGameUserResponse : ApiGameUserResponse, IApiResponse, ID
             ShowModdedContent = user.ShowModdedContent,
             ShowReuploadedContent = user.ShowReuploadedContent,
             ConnectedToPresenceServer = user.PresenceServerAuthToken != null,
+            Galochka = user.Galochka,
+            Badges = user.Badges.Select(ub => new ApiBadgeResponse
+            {
+                BadgeId = ub.BadgeId.ToString(),
+                Name = ub.Name,
+                Description = ub.Description,
+                IconUrl = ub.IconUrl,
+            }).ToList(),
         };
     }
 

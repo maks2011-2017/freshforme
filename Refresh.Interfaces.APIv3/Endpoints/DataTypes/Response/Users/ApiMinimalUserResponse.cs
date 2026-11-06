@@ -14,7 +14,7 @@ public class ApiMinimalUserResponse : IApiResponse, IDataConvertableFrom<ApiMini
     public required string BetaIconHash { get; set; }
     
     public required bool Galochka { get; set; }
-    public List<UserBadge> Badges { get; set; } = new();
+    public List<ApiBadgeResponse> Badges { get; set; } = new();
     public static ApiMinimalUserResponse? FromOld(GameUser? old, DataContext dataContext)
     {
         if (old == null) return null;
@@ -27,7 +27,13 @@ public class ApiMinimalUserResponse : IApiResponse, IDataConvertableFrom<ApiMini
             VitaIconHash = dataContext.GetIconFromHash(old.VitaIconHash),
             BetaIconHash = dataContext.GetIconFromHash(old.BetaIconHash),
             Galochka = old.Galochka,
-            Badges = old.Badges,
+            Badges = old.Badges.Select(ub => new ApiBadgeResponse
+            {
+                BadgeId = ub.BadgeId.ToString(),
+                Name = ub.Name,
+                Description = ub.Description,
+                IconUrl = ub.IconUrl,
+            }).ToList(),
         };
     }
 
