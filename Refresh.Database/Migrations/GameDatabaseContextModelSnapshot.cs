@@ -45,13 +45,13 @@ namespace Refresh.Database.Migrations
 
             modelBuilder.Entity("GameUserUserBadge", b =>
                 {
-                    b.Property<int>("BadgesId")
-                        .HasColumnType("integer");
+                    b.Property<string>("BadgesBadgeId")
+                        .HasColumnType("text");
 
                     b.Property<string>("UsersUserId")
                         .HasColumnType("text");
 
-                    b.HasKey("BadgesId", "UsersUserId");
+                    b.HasKey("BadgesBadgeId", "UsersUserId");
 
                     b.HasIndex("UsersUserId");
 
@@ -1891,11 +1891,11 @@ namespace Refresh.Database.Migrations
 
             modelBuilder.Entity("UserBadge", b =>
                 {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
+                    b.Property<string>("BadgeId")
+                        .HasColumnType("text");
 
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Description")
                         .IsRequired()
@@ -1909,7 +1909,7 @@ namespace Refresh.Database.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
-                    b.HasKey("Id");
+                    b.HasKey("BadgeId");
 
                     b.ToTable("UserBadges");
                 });
@@ -1918,7 +1918,7 @@ namespace Refresh.Database.Migrations
                 {
                     b.HasOne("UserBadge", null)
                         .WithMany()
-                        .HasForeignKey("BadgesId")
+                        .HasForeignKey("BadgesBadgeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
