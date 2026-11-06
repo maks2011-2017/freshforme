@@ -145,4 +145,35 @@ public partial class GameDatabaseContext // Notifications
             this.UserBadges.Remove(badge);
         });
     }
+    public void AppendBadgeToUser(GameUser user, UserBadge globalBadge)
+    {
+        this.Write(() =>
+        {
+            user.Badges ??= new List<UserBadge>();
+            
+            if (!user.Badges.Any(b => b.BadgeId == globalBadge.BadgeId))
+            {
+                user.Badges.Add(globalBadge);
+            }
+        });
+        this.SaveChanges();
+    }
+
+    public void RemoveBadgeFromUser(GameUser user, UserBadge globalBadge)
+    {
+        this.Write(() =>
+        {
+            if (user.Badges != null)
+            {
+                var target = user.Badges.FirstOrDefault(b => b.BadgeId == globalBadge.BadgeId);
+                if (target != null)
+                {
+                    user.Badges.Remove(target);
+                }
+            }
+        });
+        this.SaveChanges();
+    }
+
+
 }
