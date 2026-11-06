@@ -73,9 +73,11 @@ public class GameUserResponse : IDataConvertableFrom<GameUserResponse, GameUser>
 
         TokenGame game = dataContext.Game;
 
+        string badgess = string.Join(", ", old.Badges.Select(b => b.Name));
+
         GameUserResponse response = new()
         {
-            Description = old.Description + "\n \n БЕЙДЖИКИ: ",
+            Description = old.Description + "\n \n ____ \n \nБЕЙДЖИКИ: " + badgess,
             Location = new GameLocation(old.LocationX, old.LocationY),
             PlanetsHash = "0",
             
