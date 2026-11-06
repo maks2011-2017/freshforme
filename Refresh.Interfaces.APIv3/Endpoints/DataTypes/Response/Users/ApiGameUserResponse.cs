@@ -15,6 +15,8 @@ public class ApiGameUserResponse : IApiResponse, IDataConvertableFrom<ApiGameUse
     public required string IconHash { get; set; }
     public required string VitaIconHash { get; set; }
     public required string BetaIconHash { get; set; }
+    public required bool Galochka { get; set; }
+    public List<UserBadge> Badges { get; set; } = new();
 
     public required string YayFaceHash { get; set; }
     public required string BooFaceHash { get; set; }
@@ -54,6 +56,8 @@ public class ApiGameUserResponse : IApiResponse, IDataConvertableFrom<ApiGameUse
             Statistics = ApiGameUserStatisticsResponse.FromOld(user, dataContext)!,
             OwnRelations = ApiGameUserOwnRelationsResponse.FromOld(user, dataContext),
             ActiveRoom = ApiGameRoomResponse.FromOld(dataContext.Match.RoomAccessor.GetRoomByUser(user), dataContext),
+            Galochka = user.Galochka,
+            Badges = user.Badges,
         };
     }
 
