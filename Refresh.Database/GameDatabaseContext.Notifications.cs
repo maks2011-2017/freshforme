@@ -112,4 +112,37 @@ public partial class GameDatabaseContext // Notifications
             this.GameAnnouncements.Remove(announcement);
         });
     }
+
+
+    public IEnumerable<UserBadge> GetBadges() => this.UserBadges.OrderByDescending(a => a.CreatedAt);
+    
+    public UserBadge? GetBadgeById(ObjectId id) => this.UserBadges.FirstOrDefault(a => a.BadgeId == id);
+
+    public UserBadge AddBadge(string title, string text, string iconurl)
+    {
+        UserBadge badge = new()
+        {
+            BadgeId = ObjectId.GenerateNewId(),
+            IconUrl = iconurl,
+            Name = title,
+            Description = text,
+            CreatedAt = this._time.Now,
+
+        };
+        
+        this.Write(() =>
+        {
+            this.UserBadges.Add(badge);
+        });
+
+        return badge;
+    }
+    
+    public void DeleteBadge(UserBadge badge)
+    {
+        this.Write(() =>
+        {
+            this.UserBadges.Remove(badge);
+        });
+    }
 }

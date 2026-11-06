@@ -123,7 +123,7 @@ public static class EndpointBucketDefaults
         #region Users
         {EndpointBucketId.GameUploadFriendData, new(240, 6, 180)},
         {EndpointBucketId.GameSyncUserPrivacySettings, new(300, 10, 180)},
-      
+        
         {EndpointBucketId.GameGetListOfUsers, new(300, 60, 180)},
         {EndpointBucketId.GameGetSingleUser, new(300, 60, 180)},
       

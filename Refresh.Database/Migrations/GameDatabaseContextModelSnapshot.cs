@@ -43,6 +43,21 @@ namespace Refresh.Database.Migrations
                     b.ToTable("DisallowedAssets");
                 });
 
+            modelBuilder.Entity("GameUserUserBadge", b =>
+                {
+                    b.Property<int>("BadgesId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UsersUserId")
+                        .HasColumnType("text");
+
+                    b.HasKey("BadgesId", "UsersUserId");
+
+                    b.HasIndex("UsersUserId");
+
+                    b.ToTable("GameUserUserBadge");
+                });
+
             modelBuilder.Entity("Refresh.Database.Models.Activity.Event", b =>
                 {
                     b.Property<string>("EventId")
@@ -1683,6 +1698,9 @@ namespace Refresh.Database.Migrations
                     b.Property<string>("ForceMatch")
                         .HasColumnType("text");
 
+                    b.Property<bool>("Galochka")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("IconHash")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1869,6 +1887,46 @@ namespace Refresh.Database.Migrations
                     b.HasKey("WorkerId");
 
                     b.ToTable("Workers");
+                });
+
+            modelBuilder.Entity("UserBadge", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("IconUrl")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("UserBadges");
+                });
+
+            modelBuilder.Entity("GameUserUserBadge", b =>
+                {
+                    b.HasOne("UserBadge", null)
+                        .WithMany()
+                        .HasForeignKey("BadgesId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Refresh.Database.Models.Users.GameUser", null)
+                        .WithMany()
+                        .HasForeignKey("UsersUserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Refresh.Database.Models.Activity.Event", b =>

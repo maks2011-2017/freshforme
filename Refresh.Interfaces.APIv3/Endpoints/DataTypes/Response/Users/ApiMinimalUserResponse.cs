@@ -1,5 +1,6 @@
 using Refresh.Core.Types.Data;
 using Refresh.Database.Models.Users;
+using Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Badge;
 
 namespace Refresh.Interfaces.APIv3.Endpoints.DataTypes.Response.Users;
 
@@ -12,6 +13,8 @@ public class ApiMinimalUserResponse : IApiResponse, IDataConvertableFrom<ApiMini
     public required string VitaIconHash { get; set; }
     public required string BetaIconHash { get; set; }
     
+    public required bool Galochka { get; set; }
+    public List<UserBadge> Badges { get; set; } = new();
     public static ApiMinimalUserResponse? FromOld(GameUser? old, DataContext dataContext)
     {
         if (old == null) return null;
@@ -23,6 +26,8 @@ public class ApiMinimalUserResponse : IApiResponse, IDataConvertableFrom<ApiMini
             IconHash = dataContext.GetIconFromHash(old.IconHash),
             VitaIconHash = dataContext.GetIconFromHash(old.VitaIconHash),
             BetaIconHash = dataContext.GetIconFromHash(old.BetaIconHash),
+            Galochka = old.Galochka,
+            Badges = old.Badges,
         };
     }
 

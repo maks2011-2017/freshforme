@@ -10,6 +10,8 @@ public partial class GameUser : IRateLimitUser
 {
     [Key] public ObjectId UserId { get; set; } = ObjectId.GenerateNewId();
     public string Username { get; set; } = string.Empty;
+    public bool Galochka { get; set; }
+    public List<UserBadge> Badges { get; set; } = new();
     public string? EmailAddress { get; set; }
     public string? PasswordBcrypt { get; set; } = null;
     

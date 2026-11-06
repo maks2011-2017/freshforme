@@ -46,7 +46,7 @@ public class SearchLevelCategory : GameCategory
                 levels = dataContext.Database.SearchForLevelsv2(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 break;
             case "!к неархив":
-                searchTags = [ "-АРХИВ" , "-ARCHIVE"];
+                searchTags = [ "-АРХИВ" , "-ARCHIVE", "-reupload"];
                 
                 levels = dataContext.Database.SearchExcludeLevelsv1(count, skip, dataContext.User, levelFilterSettings, searchTags);
                 
